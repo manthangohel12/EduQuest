@@ -1,0 +1,156 @@
+version: '3.8'
+
+services:
+  # MongoDB Database
+  mongodb:
+    image: mongo:6.0
+    container_name: eduquest_mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password123
+      MONGO_INITDB_DATABASE: eduquest
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+      - ./database/mongodb_setup:/docker-entrypoint-initdb.d
+    networks:
+      - eduquest_network
+
+  # Django API
+  django_api:
+    build:
+      context: ./backend/django_api
+      dockerfile: Dockerfile
+    container_name: eduquest_django
+    restart: unless-stopped
+    environment:
+      - DEBUG=True
+      - DATABASE_URL=mongodb://admin:password123@mongodb:27017/eduquest?authSource=admin
+      - SECRET_KEY=your-secret-key-here
+      - ALLOWED_HOSTS=localhost,127.0.0.1
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend/django_api:/app
+      - django_static:/app/staticfiles
+    depends_on:
+      - mongodb
+    networks:
+      - eduquest_network
+    command: >
+      sh -c "python manage.py migrate &&
+              python manage.py collectstatic --noinput &&
+              python manage.py runserver 0.0.0.0:8000"
+
+  # Node.js API
+  node_api:
+    build:
+      context: ./backend/node_api
+      dockerfile: Dockerfile
+    container_name: eduquest_node
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=development
+      - MONGODB_URI=mongodb://admin:password123@mongodb:27017/eduquest?authSource=admin
+      - JWT_SECRET=your-jwt-secret-here
+      - PORT=3000
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./backend/node_api:/app
+      - /app/node_modules
+    depends_on:
+      - mongodb
+    networks:
+      - eduquest_network
+    command: npm run dev
+
+  # AI Services
+  ai_services:
+    build:
+      context: ./backend/ai_services
+      dockerfile: Dockerfile
+    container_name: eduquest_ai
+    restart: unless-stopped
+    environment:
+      - PYTHONPATH=/app
+      - MODEL_CACHE_DIR=/app/models
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./backend/ai_services:/app
+      - ai_models:/app/models
+    networks:
+      - eduquest_network
+    command: python main.py
+
+  # React Frontend
+  react_app:
+    build:
+      context: ./frontend/react_app
+      dockerfile: Dockerfile
+    container_name: eduquest_react
+    restart: unless-stopped
+    environment:
+      - REACT_APP_API_URL=http://localhost:8000
+      - REACT_APP_AI_SERVICES_URL=http://localhost:8001
+      - REACT_APP_NODE_API_URL=http://localhost:3000
+    ports:
+      - "3001:3000"
+    volumes:
+      - ./frontend/react_app:/app
+      - /app/node_modules
+    depends_on:
+      - django_api
+      - node_api
+      - ai_services
+    networks:
+      - eduquest_network
+    command: npm start
+
+  # Redis (for caching and sessions)
+  redis:
+    image: redis:7-alpine
+    container_name: eduquest_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - eduquest_network
+
+  # Nginx (reverse proxy)
+  nginx:
+    image: nginx:alpine
+    container_name: eduquest_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/ssl:/etc/nginx/ssl
+    depends_on:
+      - django_api
+      - node_api
+      - ai_services
+      - react_app
+    networks:
+      - eduquest_network
+
+volumes:
+  mongodb_data:
+    driver: local
+  django_static:
+    driver: local
+  ai_models:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  eduquest_network:
+    driver: bridge 

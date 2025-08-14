@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Generate Favicon</title>
+</head>
+<body>
+    <h1>Favicon Generator</h1>
+    <p>This page generates a simple favicon for EduQuest.</p>
+    
+    <canvas id="faviconCanvas" width="32" height="32" style="border: 1px solid #ccc;"></canvas>
+    <br>
+    <button onclick="generateFavicon()">Generate Favicon</button>
+    <br>
+    <a id="downloadLink" download="favicon.ico">Download Favicon</a>
+
+    <script>
+        function generateFavicon() {
+            const canvas = document.getElementById('faviconCanvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Clear canvas
+            ctx.clearRect(0, 0, 32, 32);
+            
+            // Draw background
+            ctx.fillStyle = '#3b82f6';
+            ctx.fillRect(0, 0, 32, 32);
+            
+            // Draw "E" letter
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 20px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('E', 16, 16);
+            
+            // Convert to blob and create download link
+            canvas.toBlob(function(blob) {
+                const url = URL.createObjectURL(blob);
+                const link = document.getElementById('downloadLink');
+                link.href = url;
+                link.style.display = 'inline';
+            }, 'image/png');
+        }
+        
+        // Generate on load
+        window.onload = generateFavicon;
+    </script>
+</body>
+</html> 

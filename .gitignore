@@ -1,0 +1,389 @@
+# Project specific ignores
+
+# Environment files (except .env.example)
+.env
+.env.local
+.env.development
+.env.production
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environment
+venv/
+ENV/
+
+# Node.js
+node_modules/
+
+# Frontend specific
+frontend/react_app/node_modules/
+frontend/react_app/.next/
+frontend/react_app/out/
+frontend/react_app/.vercel/
+
+# Backend specific
+backend/django_api/__pycache__/
+backend/django_api/*/__pycache__/
+backend/django_api/*/*/__pycache__/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Local development
+.DS_Store
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# IDE specific
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Local development settings
+local_settings.py
+local_settings.*
+
+# Test database
+*.sqlite3
+*.sqlite3-journal
+
+# Build directories
+/dist
+/build
+/out
+.next/
+.nuxt/
+.output/
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.pytest_cache/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# Test specific
+.coverage.*
+,cover
+*.mo
+*.pot
+*.py,cover
+*_cache/
+
+# Test output and artifacts
+test-results/
+test_output/
+*.log
+*.log.*
+*.trx
+
+# JUnit test reports
+junit-*.xml
+TEST-*.xml
+
+# Local test configurations
+pytest.ini
+tox.ini
+setup.cfg
+
+# Virtual environments
+venv/
+env/
+ENV/
+venv.bak/
+
+# IDE specific test configurations
+.vscode/test*
+.idea/test*
+
+# Benchmark results
+benchmark_results/
+*.bench
+
+# Local development settings
+local_settings.py
+local_settings.*
+
+# Test database
+test_db.*
+*.db-journal
+*.sqlite3-journal
+*.sqlite3-*
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# Translations
+*.mo
+*.pot
+
+# Django stuff:
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Flask stuff:
+instance/
+.webassets-cache
+
+# Scrapy stuff:
+.scrapy
+
+# Sphinx documentation
+docs/_build/
+
+# PyBuilder
+target/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# pyenv
+.python-version
+
+# celery beat schedule file
+celerybeat-schedule
+
+# SageMath parsed files
+*.sage.py
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# pytype static type analyzer
+.pytype/
+
+# Cython debug symbols
+cython_debug/
+
+# VS Code
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# PyCharm
+.idea/
+*.iml
+
+# Custom rules
+# Ignore all .md files except README.md
+*.md
+!README.md
+
+# Ignore all .bat files except start_all_services.bat
+*.bat
+!start_all_services.bat
+
+# Logs
+logs/
+*.log
+
+# Local development settings
+.env.local
+.env.*.local
+
+# AWS
+*.pem
+*.p12
+*.key
+*.crt
+*.cert
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Project specific
+media/
+staticfiles/
+*.sql
+*.sql.gz
+*.csv
+*.xlsx
+*.xls
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn files
+.yarn-integrity
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.*
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Build directories
+/dist
+/build
+/out
+.next/
+.nuxt/
+.output/
+
+# Coverage directory used by testing tools
+/coverage
+
+# Serverless directories
+.serverless/
+
+# Debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Local development
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Editor directories and files
+.idea
+.vscode
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# System Files
+.DS_Store
+Thumbs.db
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz

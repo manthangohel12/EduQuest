@@ -1,0 +1,1 @@
+# Study Sessions app initialization 
