@@ -29,31 +29,21 @@ const QuizBuilder = () => {
 
     setLoading(true);
     try {
+      // Generate and set the quiz
       const response = await aiService.generateQuiz(content, {
         num_questions: quizSettings.numQuestions,
         difficulty: quizSettings.difficulty,
         question_types: quizSettings.questionTypes
       });
 
-      setQuiz(response.data);
+      const quizData = response.data;
+      setQuiz(quizData);
       setCurrentQuestion(0);
       setAnswers({});
       setShowResults(false);
       setScore(0);
       
-      // Save quiz to backend
-      await apiService.quizzes.create({
-        title: 'AI Generated Quiz',
-        description: 'Quiz generated from content',
-        subject: 'General',
-        difficulty: quizSettings.difficulty,
-        quiz_type: quizSettings.questionTypes[0],
-        instructions: 'Answer all questions based on the content provided',
-        is_ai_generated: true,
-        source_content: content,
-        questions: response.data.questions
-      });
-      
+      // The quiz is already saved by the generateQuiz endpoint
       apiUtils.handleSuccess('Quiz generated successfully!');
     } catch (error) {
       apiUtils.handleError(error, 'Failed to generate quiz. Please try again.');
