@@ -264,9 +264,9 @@ cython_debug/
 *.md
 !README.md
 
-# Ignore all .bat files except start_all_services.bat
-*.bat
-!start_all_services.bat
+# # Ignore all .bat files except start_all_services.bat
+# *.bat
+# !start_all_services.bat
 
 # Logs
 logs/
