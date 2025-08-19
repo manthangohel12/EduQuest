@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Progress, LearningStreak, SubjectProgress, LearningAnalytics
+from .models import Progress, LearningStreak, SubjectProgress, LearningAnalytics, LearningGoal
 from courses.serializers import CourseSerializer
 
 
@@ -123,4 +123,29 @@ class LearningInsightsSerializer(serializers.Serializer):
 class ProgressChartSerializer(serializers.Serializer):
     """Serializer for progress chart data."""
     labels = serializers.ListField(child=serializers.CharField())
-    datasets = serializers.ListField(child=serializers.DictField()) 
+    datasets = serializers.ListField(child=serializers.DictField())
+
+
+class LearningGoalSerializer(serializers.ModelSerializer):
+    """Serializer for learning goals."""
+    
+    class Meta:
+        model = LearningGoal
+        fields = [
+            'id', 'title', 'description', 'goal_type', 'target_value', 'current_value',
+            'deadline', 'is_completed', 'completed_at', 'priority', 'difficulty',
+            'created_at', 'updated_at'
+        ]
+        read_only_fields = [
+            'id', 'current_value', 'is_completed', 'completed_at', 'created_at', 'updated_at'
+        ]
+
+
+class LearningGoalCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating learning goals."""
+    
+    class Meta:
+        model = LearningGoal
+        fields = [
+            'title', 'description', 'goal_type', 'target_value', 'deadline', 'priority', 'difficulty'
+        ] 

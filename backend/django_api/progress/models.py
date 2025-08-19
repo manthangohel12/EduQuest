@@ -238,4 +238,84 @@ class LearningAnalytics(models.Model):
             )
         else:
             self.productivity_score = 0
-        self.save() 
+        self.save()
+
+
+class LearningGoal(models.Model):
+    """Model for tracking user learning goals."""
+    
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='learning_goals')
+    
+    # Goal details
+    title = models.CharField(max_length=200)
+    description = models.TextField(blank=True)
+    goal_type = models.CharField(max_length=20, choices=[
+        ('completion', 'Course Completion'),
+        ('score', 'Quiz Score'),
+        ('time', 'Study Time'),
+        ('streak', 'Learning Streak'),
+        ('custom', 'Custom Goal')
+    ], default='completion')
+    
+    # Target and progress
+    target_value = models.CharField(max_length=100, help_text='Target value (e.g., 100%, 90 minutes)')
+    current_value = models.CharField(max_length=100, default='0', help_text='Current progress value')
+    deadline = models.DateField()
+    
+    # Status
+    is_completed = models.BooleanField(default=False)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    
+    # Priority and difficulty
+    priority = models.CharField(max_length=20, choices=[
+        ('low', 'Low'),
+        ('medium', 'Medium'),
+        ('high', 'High')
+    ], default='medium')
+    
+    difficulty = models.CharField(max_length=20, choices=[
+        ('easy', 'Easy'),
+        ('moderate', 'Moderate'),
+        ('hard', 'Hard')
+    ], default='moderate')
+    
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'learning_goals'
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"{self.user.username} - {self.title}"
+    
+    def update_progress(self, new_value):
+        """Update goal progress."""
+        self.current_value = str(new_value)
+        
+        # Check if goal is completed
+        if self.check_completion():
+            self.is_completed = True
+            self.completed_at = timezone.now()
+        
+        self.save()
+    
+    def check_completion(self):
+        """Check if goal is completed based on type."""
+        try:
+            current = float(self.current_value)
+            target = float(self.target_value)
+            
+            if self.goal_type == 'completion':
+                return current >= target
+            elif self.goal_type == 'score':
+                return current >= target
+            elif self.goal_type == 'time':
+                return current >= target
+            elif self.goal_type == 'streak':
+                return current >= target
+            else:
+                return current >= target
+        except (ValueError, TypeError):
+            return False 

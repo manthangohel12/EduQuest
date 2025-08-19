@@ -5,7 +5,7 @@ from django.shortcuts import get_object_or_404
 from django.db.models import Q, Avg, Sum, Count
 from django.utils import timezone
 from datetime import timedelta
-from .models import Progress, LearningStreak, SubjectProgress, LearningAnalytics
+from .models import Progress, LearningStreak, SubjectProgress, LearningAnalytics, LearningGoal
 from .serializers import (
     ProgressSerializer,
     ProgressUpdateSerializer,
@@ -16,7 +16,9 @@ from .serializers import (
     ProgressSummarySerializer,
     SubjectBreakdownSerializer,
     LearningInsightsSerializer,
-    ProgressChartSerializer
+    ProgressChartSerializer,
+    LearningGoalSerializer,
+    LearningGoalCreateSerializer
 )
 
 
@@ -322,4 +324,29 @@ def update_streak(request):
         'longest_streak': streak.longest_streak,
         'total_study_days': streak.total_study_days,
         'milestones_achieved': streak.milestones_achieved
-    }, status=status.HTTP_200_OK) 
+    }, status=status.HTTP_200_OK)
+
+
+class LearningGoalListView(generics.ListCreateAPIView):
+    """View for listing and creating learning goals."""
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get_serializer_class(self):
+        if self.request.method == 'POST':
+            return LearningGoalCreateSerializer
+        return LearningGoalSerializer
+    
+    def get_queryset(self):
+        return LearningGoal.objects.filter(user=self.request.user)
+    
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+
+class LearningGoalDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """View for learning goal details."""
+    serializer_class = LearningGoalSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get_queryset(self):
+        return LearningGoal.objects.filter(user=self.request.user) 

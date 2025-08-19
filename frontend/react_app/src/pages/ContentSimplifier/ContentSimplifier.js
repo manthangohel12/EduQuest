@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { Upload, FileText, Sparkles, Copy, Download, BookOpen, Target, Users } from 'lucide-react';
+import { Upload, FileText, Sparkles, Copy, Download, BookOpen, Target, Users, HelpCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { aiService, apiService, apiUtils } from '../../services/api';
 import LoadingSpinner from '../../components/Common/LoadingSpinner';
 
 const ContentSimplifier = () => {
+  const navigate = useNavigate();
   const [content, setContent] = useState('');
   const [simplifiedContent, setSimplifiedContent] = useState('');
   const [loading, setLoading] = useState(false);
@@ -123,6 +125,18 @@ const ContentSimplifier = () => {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
     apiUtils.handleSuccess('File downloaded successfully!');
+  };
+
+  const handleGenerateQuiz = () => {
+    if (simplifiedContent) {
+      // Navigate to quiz page with the simplified content
+      navigate('/quiz', { 
+        state: { 
+          content: content,
+          source: 'original'
+        } 
+      });
+    }
   };
 
   const getComplexityColor = (complexity) => {
@@ -253,32 +267,27 @@ const ContentSimplifier = () => {
 
             {simplifiedContent ? (
               <div className="space-y-4">
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-gray-700">Readability Score</span>
-                    <div className="flex items-center space-x-2">
-                      <span className={`text-sm font-bold ${getComplexityColor(originalComplexity)}`}>
-                        Original: {getComplexityLabel(originalComplexity)}
-                      </span>
-                      <span className="text-gray-400">→</span>
-                      <span className={`text-sm font-bold ${getComplexityColor(simplifiedComplexity)}`}>
-                        Simplified: {getComplexityLabel(simplifiedComplexity)}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div
-                      className="bg-primary-600 h-2 rounded-full transition-all duration-300"
-                      style={{ width: `${simplifiedComplexity}%` }}
-                    ></div>
-                  </div>
-                </div>
+                
 
                 <textarea
                   value={simplifiedContent}
                   readOnly
                   className="w-full h-64 p-4 border border-gray-300 rounded-lg resize-none bg-gray-50"
                 />
+
+                {/* Generate Quiz Button */}
+                <div className="flex flex-col items-center space-y-2">
+                  <button
+                    onClick={handleGenerateQuiz}
+                    className="btn-secondary flex items-center space-x-2 px-6 py-3"
+                  >
+                    <HelpCircle className="w-5 h-5" />
+                    <span>Generate Quiz from the Original Content</span>
+                  </button>
+                  <p className="text-xs text-gray-500 text-center">
+                    Create a quiz based on the original content to test understanding
+                  </p>
+                </div>
               </div>
             ) : (
               <div className="h-64 flex items-center justify-center border-2 border-dashed border-gray-300 rounded-lg">
@@ -290,42 +299,6 @@ const ContentSimplifier = () => {
             )}
           </div>
 
-          {/* Key Concepts */}
-          {keyConcepts.length > 0 && (
-            <div className="card">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                <Target className="w-5 h-5 mr-2" />
-                Key Concepts
-              </h3>
-              <div className="flex flex-wrap gap-2">
-                {keyConcepts.map((concept, index) => (
-                  <span
-                    key={index}
-                    className="px-3 py-1 bg-primary-100 text-primary-700 rounded-full text-sm"
-                  >
-                    {concept}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Explanations */}
-          {explanations.length > 0 && (
-            <div className="card">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                <Users className="w-5 h-5 mr-2" />
-                Explanations
-              </h3>
-              <div className="space-y-3">
-                {explanations.map((explanation, index) => (
-                  <div key={index} className="p-3 bg-gray-50 rounded-lg">
-                    <p className="text-sm text-gray-700">{explanation}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </div>

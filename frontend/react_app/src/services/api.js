@@ -143,6 +143,13 @@ export const apiService = {
     updateProgress: (courseId, progressData) => api.patch(`/api/progress/course/${courseId}/`, progressData),
     getAnalytics: (params = {}) => api.get('/api/progress/summary/', { params }),
     getStreaks: () => api.get('/api/progress/streak/'),
+    getSubjectBreakdown: () => api.get('/api/progress/subject-breakdown/'),
+    getLearningInsights: () => api.get('/api/progress/insights/'),
+    getProgressChartData: (params = {}) => api.get('/api/progress/chart-data/', { params }),
+    getGoals: () => api.get('/api/progress/goals/'),
+    createGoal: (goalData) => api.post('/api/progress/goals/', goalData),
+    updateGoal: (goalId, goalData) => api.put(`/api/progress/goals/${goalId}/`, goalData),
+    deleteGoal: (goalId) => api.delete(`/api/progress/goals/${goalId}/`),
   },
 
   // Learning Paths

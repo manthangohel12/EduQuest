@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { HelpCircle, Play, CheckCircle, XCircle, Clock, Target, FileText, Sparkles } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
 import { aiService, apiService, apiUtils } from '../../services/api';
 import LoadingSpinner from '../../components/Common/LoadingSpinner';
 
 const QuizBuilder = () => {
+  const location = useLocation();
   const [content, setContent] = useState('');
   const [quiz, setQuiz] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -16,6 +18,15 @@ const QuizBuilder = () => {
     difficulty: 'medium',
     questionTypes: ['multiple_choice']
   });
+
+  // Check if content was passed from ContentSimplifier
+  useEffect(() => {
+    if (location.state?.content) {
+      setContent(location.state.content);
+      // Clear the navigation state to avoid re-filling on refresh
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
 
   const handleContentChange = (e) => {
     setContent(e.target.value);
@@ -134,6 +145,17 @@ const QuizBuilder = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Content for Quiz Generation
                 </label>
+                
+                {/* Show indicator if content was pre-filled */}
+                {location.state?.source === 'simplified' && (
+                  <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div className="flex items-center space-x-2 text-blue-700">
+                      <FileText className="w-4 h-4" />
+                      <span className="text-sm font-medium">Content pre-filled from simplified text</span>
+                    </div>
+                  </div>
+                )}
+                
                 <textarea
                   value={content}
                   onChange={handleContentChange}

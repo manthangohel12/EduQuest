@@ -184,13 +184,19 @@ async def get_supported_formats():
 async def generate_quiz(request: QuizRequest):
     """Generate quiz questions from content"""
     try:
-        result = await quiz_generator.generate_quiz(
+        result = quiz_generator.generate_quiz(
             content=request.content,
             num_questions=request.num_questions,
             difficulty=request.difficulty,
             question_types=request.question_types
         )
-        return result
+        
+        # Transform the result to match QuizResponse model
+        return QuizResponse(
+            questions=result.get("questions", []),
+            total_questions=result.get("metadata", {}).get("total_questions", 0),
+            estimated_difficulty=result.get("metadata", {}).get("difficulty", "medium")
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Quiz generation failed: {str(e)}")
 

@@ -24,4 +24,8 @@ urlpatterns = [
     path('subject-breakdown/', views.get_subject_breakdown, name='subject-breakdown'),
     path('insights/', views.get_learning_insights, name='learning-insights'),
     path('chart-data/', views.get_progress_chart_data, name='progress-chart-data'),
+    
+    # Learning goals
+    path('goals/', views.LearningGoalListView.as_view(), name='learning-goal-list'),
+    path('goals/<int:pk>/', views.LearningGoalDetailView.as_view(), name='learning-goal-detail'),
 ] 
