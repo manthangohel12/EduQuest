@@ -7,7 +7,6 @@ import {
   BookOpen, 
   MessageSquare, 
   HelpCircle, 
-  BarChart3, 
   Map, 
   Settings, 
   LogOut,
@@ -24,7 +23,7 @@ const Sidebar = ({ isOpen, onClose, user }) => {
     { path: '/simplify', icon: BookOpen, label: 'Content Simplifier' },
     { path: '/chat', icon: MessageSquare, label: 'Study Chat' },
     { path: '/quiz', icon: HelpCircle, label: 'Quiz Builder' },
-    { path: '/progress', icon: BarChart3, label: 'Progress Tracker' },
+    // { path: '/progress', icon: HelpCircle, label: 'Progress Tracker' },
     { path: '/learning-path', icon: Map, label: 'Learning Path' },
     { path: '/profile', icon: Settings, label: 'Profile Settings' },
   ];

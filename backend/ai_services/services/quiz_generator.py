@@ -16,7 +16,8 @@ from openai import OpenAI
 class QuizGenerator:
     def __init__(self, question_model: str = "mistral:7b-instruct-q2_K", option_model: str = "mistral:7b-instruct-q2_K", 
                  use_ai_models: bool = True, fast_mode: bool = False, ollama_url: str = "http://127.0.0.1:11434",
-                 openai_api_key: str = None, openai_model: str = "gpt-3.5-turbo", use_openai_fallback: bool = True):
+                 openai_api_key: str = None, openai_model: str = "gpt-3.5-turbo", use_openai_fallback: bool = True, gemini_api_key: str = None,
+                 gemini_model: str = "gemini-1.5-flash", use_gemini_fallback: bool = True):
         self.nlp = None
         self._load_nlp()
         self.question_model = question_model
@@ -36,6 +37,17 @@ class QuizGenerator:
         self.openai_model = openai_model
         self.openai_client = None
         self.openai_available = False
+
+       # Gemini configuration
+        self.use_gemini_fallback = use_gemini_fallback
+        self.gemini_model = gemini_model
+        self.gemini_available = False
+        self.gemini_client = None
+
+        if self.use_gemini_fallback:
+            self._initialize_gemini(gemini_api_key)
+
+
         
         # Initialize OpenAI if enabled
         if self.use_openai_fallback:
@@ -52,6 +64,55 @@ class QuizGenerator:
                 self._preload_models()
         else:
             print("🚀 Fast mode enabled - using NLP-based generation for speed")
+
+    def _initialize_gemini(self, api_key: str = None):
+        """Initialize Gemini client"""
+        try:
+            import google.generativeai as genai
+            if api_key:
+                genai.configure(api_key=api_key)
+            elif os.getenv("GEMINI_API_KEY"):
+                genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+            else:
+                print("⚠️ Gemini API key not provided - Gemini fallback disabled")
+                self.use_gemini_fallback = False
+                return
+
+            # Test Gemini availability
+            model = genai.GenerativeModel(self.gemini_model)
+            response = model.generate_content("Test")
+            if response and response.text:
+                self.gemini_available = True
+                self.gemini_client = model
+                print(f"✅ Gemini fallback available: {self.gemini_model}")
+            else:
+                raise Exception("No response from Gemini")
+
+        except Exception as e:
+            print(f"⚠️ Gemini initialization failed: {e}")
+            self.use_gemini_fallback = False
+            self.gemini_available = False
+            self.gemini_client = None
+    
+
+    def _call_gemini_api(self, prompt: str, max_tokens: int = 300, temperature: float = 0.3) -> str:
+        """Call Gemini API with error handling"""
+        if not self.gemini_available or not self.gemini_client:
+            return ""
+
+        try:
+            response = self.gemini_client.generate_content(
+                prompt,
+                generation_config={
+                    "temperature": temperature,
+                    "max_output_tokens": max_tokens
+                }
+            )
+            return response.text.strip() if response and response.text else ""
+        except Exception as e:
+            print(f"🔴 Gemini API error: {e}")
+            return ""
+
 
     def _load_nlp(self):
         """Load spaCy model for NLP processing"""
@@ -604,11 +665,17 @@ class QuizGenerator:
                 print(f"✅ OpenAI generated {len(openai_result)} questions successfully")
                 return openai_result
             else:
-                print("⚠️ OpenAI generation failed, using NLP fallback...")
+                print("⚠️ OpenAI generation failed, using Gemini fallback...")
         
-        # Final fallback to NLP
-        print("🔥 Using enhanced NLP fallback...")
-        return self._generate_fallback_questions(content, num_questions, difficulty, question_types)
+       # Try Gemini fallback
+        if self.gemini_available:
+            print(f"🌐 Trying Gemini generation with {self.gemini_model}...")
+            gemini_result = self._try_gemini_question_generation(content, num_questions, difficulty, question_types)
+            if gemini_result and len(gemini_result) > 0:
+                print(f"✅ Gemini generated {len(gemini_result)} questions successfully")
+                return gemini_result
+            else:
+                print("⚠️ Gemini generation failed, using NLP fallback...")
 
     def _try_ollama_question_generation(self, content: str, num_questions: int, difficulty: str, question_types: List[str]) -> List[Dict[str, Any]]:
         """Try generating questions with Ollama"""
@@ -1462,3 +1529,46 @@ Return ONLY the JSON object, no other text.
             "option_model_time": option_model_time,
             "average_time": (question_model_time + option_model_time) / 2
         }
+    def _try_gemini_question_generation(self, content: str, num_questions: int, difficulty: str, question_types: List[str]) -> List[Dict[str, Any]]:
+        """Try generating questions with Gemini"""
+        try:
+            prompt = f"""Generate exactly {num_questions} quiz questions from the provided content.
+
+    Content:
+    {content[:2000]}
+
+    Requirements:
+    - Generate exactly {num_questions} questions
+    - Difficulty level: {difficulty}
+    - Question types to use: {', '.join(question_types)}
+    - Each question should include a reference to the source text
+    - Return as a valid JSON array
+
+    Format:
+    [
+    {{
+        "question": "Question text here",
+        "type": "multiple_choice",
+        "reference_text": "Relevant excerpt from content",
+        "difficulty": "{difficulty}"
+    }}
+    ]
+
+    Return ONLY the JSON array, no additional text.
+    """
+
+            response = self._call_gemini_api(prompt, max_tokens=1000, temperature=0.3)
+
+            if response:
+                json_start = response.find('[')
+                json_end = response.rfind(']') + 1
+                if json_start != -1 and json_end > json_start:
+                    json_str = response[json_start:json_end]
+                    questions = json.loads(json_str)
+                    if isinstance(questions, list) and len(questions) > 0:
+                        return questions[:num_questions]
+            return []
+
+        except Exception as e:
+            print(f"⚠️ Gemini question generation error: {e}")
+            return []

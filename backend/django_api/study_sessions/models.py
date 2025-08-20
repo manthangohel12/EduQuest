@@ -197,9 +197,7 @@ class StudyAnalytics(models.Model):
     mood_score = models.FloatField(default=0.0, help_text='Average mood rating')
     productivity_score = models.FloatField(default=0.0, help_text='Calculated productivity score')
     
-    # Subject breakdown
-    subjects_studied = models.JSONField(default=list, help_text='List of subjects studied')
-    subject_time_breakdown = models.JSONField(default=dict, help_text='Time spent per subject')
+    
     
     # AI insights
     insights = models.JSONField(default=dict, help_text='AI-generated insights for the day')

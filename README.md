@@ -70,7 +70,7 @@ npm start
 ### Backend Services
 - **Django API** (Port 8000): Main REST API with user management, courses, quizzes
 - **Node.js API** (Port 3000): Real-time features, WebSocket chat, file uploads
-- **AI Services** (Port 8001): FastAPI service for text simplification, quiz generation, progress prediction
+- **AI Services** (Port 8001): FastAPI service for text simplification and quiz generation
 
 ### Frontend
 - **React App** (Port 3001): Modern UI with Tailwind CSS, real-time features
@@ -84,7 +84,6 @@ npm start
 - **Content Simplification**: AI-powered text simplification with difficulty adjustment
 - **Adaptive Quizzes**: Auto-generated quizzes from any content
 - **Study Chat**: Real-time AI conversation partner
-- **Progress Tracking**: Visual analytics and learning insights
 - **Personalized Learning Paths**: AI-recommended learning sequences
 - **Gamification**: Badges, streaks, experience points
 
@@ -162,7 +161,6 @@ npm test
 ### AI Services Endpoints
 - `POST /simplify` - Text simplification
 - `POST /generate-quiz` - Quiz generation
-- `POST /predict-progress` - Progress prediction
 
 ## 🚀 Deployment
 

@@ -5,16 +5,15 @@ from django.shortcuts import get_object_or_404
 from django.db.models import Q, Avg, Sum, Count
 from django.utils import timezone
 from datetime import timedelta
-from .models import Progress, LearningStreak, SubjectProgress, LearningAnalytics, LearningGoal
+from .models import Progress, LearningStreak, LearningAnalytics, LearningGoal
+from quizzes.models import QuizAttempt
 from .serializers import (
     ProgressSerializer,
     ProgressUpdateSerializer,
     LearningStreakSerializer,
-    SubjectProgressSerializer,
-    SubjectProgressUpdateSerializer,
+    
     LearningAnalyticsSerializer,
     ProgressSummarySerializer,
-    SubjectBreakdownSerializer,
     LearningInsightsSerializer,
     ProgressChartSerializer,
     LearningGoalSerializer,
@@ -50,22 +49,7 @@ class LearningStreakView(generics.RetrieveAPIView):
         return streak
 
 
-class SubjectProgressListView(generics.ListAPIView):
-    """View for listing subject progress."""
-    serializer_class = SubjectProgressSerializer
-    permission_classes = [permissions.IsAuthenticated]
     
-    def get_queryset(self):
-        return SubjectProgress.objects.filter(user=self.request.user)
-
-
-class SubjectProgressDetailView(generics.RetrieveUpdateAPIView):
-    """View for subject progress details."""
-    serializer_class = SubjectProgressUpdateSerializer
-    permission_classes = [permissions.IsAuthenticated]
-    
-    def get_queryset(self):
-        return SubjectProgress.objects.filter(user=self.request.user)
 
 
 @api_view(['POST'])
@@ -128,9 +112,15 @@ def get_progress_summary(request):
     # Get streak data
     streak, created = LearningStreak.objects.get_or_create(user=user)
     
-    # Get quiz data
+    # Get quiz data from Progress and fall back to attempts if needed
     total_quizzes_taken = progress_records.aggregate(Sum('total_quizzes_taken'))['total_quizzes_taken__sum'] or 0
     average_quiz_score = progress_records.aggregate(Avg('average_quiz_score'))['average_quiz_score__avg'] or 0
+    # Fallback using QuizAttempt if progress records not updated
+    user_attempts = QuizAttempt.objects.filter(user=user, status='completed')
+    if total_quizzes_taken == 0:
+        total_quizzes_taken = user_attempts.count()
+    if average_quiz_score == 0:
+        average_quiz_score = user_attempts.aggregate(Avg('score'))['score__avg'] or 0
     
     # Add debug logging
     import logging
@@ -158,31 +148,7 @@ def get_progress_summary(request):
     return Response(summary, status=status.HTTP_200_OK)
 
 
-@api_view(['GET'])
-@permission_classes([permissions.IsAuthenticated])
-def get_subject_breakdown(request):
-    """Get progress breakdown by subject."""
-    user = request.user
     
-    subject_progress = SubjectProgress.objects.filter(user=user)
-    breakdown = []
-    
-    for subject in subject_progress:
-        # Calculate completion percentage
-        total_courses = subject.courses_enrolled
-        completed_courses = subject.courses_completed
-        completion_percentage = (completed_courses / total_courses * 100) if total_courses > 0 else 0
-        
-        breakdown.append({
-            'subject': subject.subject,
-            'courses_enrolled': subject.courses_enrolled,
-            'courses_completed': subject.courses_completed,
-            'total_time_spent': subject.total_time_spent,
-            'average_score': round(subject.average_score, 2),
-            'completion_percentage': round(completion_percentage, 2)
-        })
-    
-    return Response(breakdown, status=status.HTTP_200_OK)
 
 
 @api_view(['GET'])
@@ -193,7 +159,6 @@ def get_learning_insights(request):
     
     # Get progress data for analysis
     progress_records = Progress.objects.filter(user=user)
-    subject_progress = SubjectProgress.objects.filter(user=user)
     
     if not progress_records.exists():
         return Response({
@@ -234,7 +199,6 @@ def get_learning_insights(request):
     weaknesses = list(set(all_weaknesses))[:5]  # Top 5 weaknesses
     
     learning_patterns = {
-        'preferred_subjects': [sp.subject for sp in subject_progress.order_by('-total_time_spent')[:3]],
         'study_intensity': 'moderate' if average_completion > 50 else 'low',
         'quiz_performance': 'good' if average_quiz_score > 70 else 'needs_improvement'
     }

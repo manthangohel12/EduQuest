@@ -53,8 +53,8 @@ const chatSessionSchema = new mongoose.Schema({
   },
   sessionType: {
     type: String,
-    enum: ['study_partner', 'tutor', 'group_study', 'qa'],
-    default: 'study_partner'
+    enum: ['study'],
+    default: 'study'
   },
   subject: {
     type: String,
@@ -73,7 +73,7 @@ const chatSessionSchema = new mongoose.Schema({
   aiSettings: {
     model: {
       type: String,
-      default: 'gpt-3.5-turbo'
+      default: 'gemini-1.5-flash'
     },
     personality: {
       type: String,
@@ -152,5 +152,5 @@ chatSessionSchema.methods.getSummary = function () {
     createdAt: this.createdAt
   };
 };
-
-module.exports = mongoose.model('ChatSession', chatSessionSchema); 
+const Chat=mongoose.model('ChatSession', chatSessionSchema);
+module.exports = Chat;

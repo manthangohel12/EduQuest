@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Upload, FileText, Sparkles, Copy, Download, BookOpen, Target, Users, HelpCircle } from 'lucide-react';
+import { Upload, FileText, Sparkles, Copy, Download, BookOpen, Target, Users, HelpCircle, MessageSquare } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { aiService, apiService, apiUtils } from '../../services/api';
 import LoadingSpinner from '../../components/Common/LoadingSpinner';
@@ -15,9 +15,38 @@ const ContentSimplifier = () => {
   const [explanations, setExplanations] = useState([]);
   const [originalComplexity, setOriginalComplexity] = useState(0);
   const [simplifiedComplexity, setSimplifiedComplexity] = useState(0);
+  const [showHistory, setShowHistory] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState('');
+  const [historyItems, setHistoryItems] = useState([]);
 
   const handleContentChange = (e) => {
     setContent(e.target.value);
+  };
+
+  const loadHistory = async () => {
+    setHistoryLoading(true);
+    setHistoryError('');
+    try {
+      const res = await apiService.aiExplanations.getAll();
+      const data = res.data;
+      const items = Array.isArray(data) ? data : (data.results || []);
+      setHistoryItems(items);
+    } catch (err) {
+      console.error('Failed to load history:', err);
+      const e = apiUtils.handleError(err, 'Failed to load history');
+      setHistoryError(e.detail || e.networkError || 'Failed to load history');
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  const handleToggleHistory = async () => {
+    const next = !showHistory;
+    setShowHistory(next);
+    if (next) {
+      await loadHistory();
+    }
   };
 
   const handleFileUpload = async (e) => {
@@ -139,6 +168,19 @@ const ContentSimplifier = () => {
     }
   };
 
+  const handleAskDoubts = () => {
+    if (!simplifiedContent) {
+      apiUtils.handleError(new Error('Please simplify content first to provide context for Study Chat'));
+      return;
+    }
+    navigate('/chat', {
+      state: {
+        context: simplifiedContent,
+        source: 'simplifier'
+      }
+    });
+  };
+
   const getComplexityColor = (complexity) => {
     if (complexity >= 80) return 'text-green-600';
     if (complexity >= 60) return 'text-yellow-600';
@@ -162,6 +204,12 @@ const ContentSimplifier = () => {
         <div className="flex items-center space-x-2">
           <Sparkles className="w-6 h-6 text-primary-600" />
           <span className="text-sm font-medium text-primary-600">AI-Powered</span>
+          <button
+            onClick={handleToggleHistory}
+            className="btn-secondary px-3 py-1"
+          >
+            {showHistory ? 'Hide History' : 'View History'}
+          </button>
         </div>
       </div>
 
@@ -288,6 +336,20 @@ const ContentSimplifier = () => {
                     Create a quiz based on the original content to test understanding
                   </p>
                 </div>
+
+                {/* Ask Doubts in Study Chat Button */}
+                <div className="flex flex-col items-center space-y-2">
+                  <button
+                    onClick={handleAskDoubts}
+                    className="btn-primary flex items-center space-x-2 px-6 py-3"
+                  >
+                    <MessageSquare className="w-5 h-5" />
+                    <span>Ask doubts in Study Chat</span>
+                  </button>
+                  <p className="text-xs text-gray-500 text-center">
+                    Opens Study Chat with this simplified content as context
+                  </p>
+                </div>
               </div>
             ) : (
               <div className="h-64 flex items-center justify-center border-2 border-dashed border-gray-300 rounded-lg">
@@ -301,6 +363,60 @@ const ContentSimplifier = () => {
 
         </div>
       </div>
+
+      {showHistory && (
+        <div className="card">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-900">Your Simplification History</h2>
+            <div className="flex items-center space-x-2">
+              <button onClick={loadHistory} className="btn-secondary px-3 py-1">Refresh</button>
+            </div>
+          </div>
+          {historyLoading ? (
+            <div className="py-8 flex justify-center"><LoadingSpinner size="md" /></div>
+          ) : historyError ? (
+            <p className="text-red-600 text-sm">{historyError}</p>
+          ) : historyItems.length === 0 ? (
+            <p className="text-gray-500 text-sm">No history yet. Simplify something to see it here.</p>
+          ) : (
+            <div className="space-y-6">
+              {historyItems.map((item) => (
+                <div key={item.id} className="border rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="text-sm text-gray-600">
+                      <span className="mr-2">{apiUtils.formatDate(item.created_at)}</span>
+                      {item.content_type && (
+                        <span className="px-2 py-0.5 text-xs bg-gray-100 rounded">{item.content_type}</span>
+                      )}
+                      {item.difficulty_level && (
+                        <span className="ml-2 px-2 py-0.5 text-xs bg-gray-100 rounded">{item.difficulty_level}</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <div>
+                      <h3 className="text-sm font-medium text-gray-800 mb-2">Original</h3>
+                      <textarea
+                        value={item.original_content || ''}
+                        readOnly
+                        className="w-full h-40 p-3 border border-gray-300 rounded-lg resize-none bg-gray-50"
+                      />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-medium text-gray-800 mb-2">Simplified</h3>
+                      <textarea
+                        value={item.simplified_content || ''}
+                        readOnly
+                        className="w-full h-40 p-3 border border-gray-300 rounded-lg resize-none bg-gray-50"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };

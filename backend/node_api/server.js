@@ -12,6 +12,7 @@ require('dotenv').config();
 const authRoutes = require('./routes/auth');
 const chatRoutes = require('./routes/chat');
 const uploadRoutes = require('./routes/upload');
+const summaryRoutes = require('./routes/summary');
 const { errorHandler } = require('./middleware/errorHandler');
 const { logger } = require('./utils/logger');
 
@@ -78,6 +79,7 @@ app.get('/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/summaries', summaryRoutes);
 
 // Socket.io setup for real-time chat
 io.on('connection', (socket) => {

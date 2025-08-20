@@ -193,14 +193,10 @@ def recommended_courses(request):
     """Get recommended courses based on user preferences."""
     user = request.user
     
-    # Get courses matching user's preferred subjects
-    preferred_subjects = user.preferred_subjects or []
+    # Get courses matching user's difficulty preference
     difficulty = user.difficulty_preference
     
     queryset = Course.objects.filter(is_active=True)
-    
-    if preferred_subjects:
-        queryset = queryset.filter(subject__in=preferred_subjects)
     
     if difficulty:
         queryset = queryset.filter(difficulty=difficulty)

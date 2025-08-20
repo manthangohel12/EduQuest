@@ -117,12 +117,17 @@ export const apiService = {
   quizzes: {
     getAll: (params = {}) => api.get('/api/quizzes/', { params }),
     getById: (id) => api.get(`/api/quizzes/${id}/`),
+    getQuestions: (quizId) => api.get(`/api/quizzes/${quizId}/questions/`),
     create: (quizData) => api.post('/api/quizzes/', quizData),
     update: (id, quizData) => api.patch(`/api/quizzes/${id}/`, quizData),
     delete: (id) => api.delete(`/api/quizzes/${id}/`),
+    // Legacy (backend may not support these exact endpoints)
     startAttempt: (quizId) => api.post(`/api/quizzes/${quizId}/start/`),
     submitAttempt: (quizId, answers) => api.post(`/api/quizzes/${quizId}/submit/`, { answers }),
-    getAttempts: (quizId) => api.get(`/api/quizzes/${quizId}/attempts/`),
+    // Current
+    listAttempts: () => api.get('/api/quizzes/attempts/'),
+    saveAIQuiz: (payload) => api.post('/api/quizzes/ai/save/', payload),
+    submitAIAttempt: (quizId, payload) => api.post(`/api/quizzes/ai/attempts/${quizId}/submit/`, payload),
   },
 
   // Study Sessions
@@ -134,6 +139,7 @@ export const apiService = {
     delete: (id) => api.delete(`/api/study-sessions/${id}/`),
     endSession: (id, endData) => api.post(`/api/study-sessions/${id}/end/`, endData),
     getAnalytics: (params = {}) => api.get('/api/study-sessions/analytics/', { params }),
+    getRecent: (limit = 5) => api.get('/api/study-sessions/recent/', { params: { limit } }),
   },
 
   // Progress
@@ -143,12 +149,11 @@ export const apiService = {
     updateProgress: (courseId, progressData) => api.patch(`/api/progress/course/${courseId}/`, progressData),
     getAnalytics: (params = {}) => api.get('/api/progress/summary/', { params }),
     getStreaks: () => api.get('/api/progress/streak/'),
-    getSubjectBreakdown: () => api.get('/api/progress/subject-breakdown/'),
     getLearningInsights: () => api.get('/api/progress/insights/'),
     getProgressChartData: (params = {}) => api.get('/api/progress/chart-data/', { params }),
     getGoals: () => api.get('/api/progress/goals/'),
     createGoal: (goalData) => api.post('/api/progress/goals/', goalData),
-    updateGoal: (goalId, goalData) => api.put(`/api/progress/goals/${goalId}/`, goalData),
+    updateGoal: (goalId, goalData) => api.patch(`/api/progress/goals/${goalId}/`, goalData),
     deleteGoal: (goalId) => api.delete(`/api/progress/goals/${goalId}/`),
   },
 
@@ -191,14 +196,14 @@ export const aiService = {
   generateQuiz: (content, settings) =>
     aiApi.post('/generate-quiz', { content, ...settings }),
   
-  predictProgress: (userData) =>
-    aiApi.post('/predict-progress', userData),
-  
   analyzeContent: (content) =>
     aiApi.post('/analyze-content', { content }),
   
   getSupportedFormats: () =>
     aiApi.get('/supported-formats'),
+
+  studyChatRespond: (question, context = '') =>
+    aiApi.post('/study-chat/respond', { question, context }),
 };
 
 // Node.js API for real-time features
@@ -213,6 +218,13 @@ export const nodeService = {
     deleteSession: (sessionId) => nodeApi.delete(`/api/chat/sessions/${sessionId}`),
     getStatistics: () => nodeApi.get('/api/chat/statistics'),
     searchMessages: (query) => nodeApi.get('/api/chat/search', { params: { query } }),
+  },
+
+  // Summaries
+  summaries: {
+    create: (payload) => nodeApi.post('/api/summaries', payload),
+    list: (params = {}) => nodeApi.get('/api/summaries', { params }),
+    getById: (id) => nodeApi.get(`/api/summaries/${id}`),
   },
 
   // File Upload

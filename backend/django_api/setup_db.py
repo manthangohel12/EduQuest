@@ -18,7 +18,7 @@ from django.contrib.auth import get_user_model
 from courses.models import Course, CourseEnrollment, Topic
 from quizzes.models import Quiz, QuizQuestion, QuizAttempt
 from study_sessions.models import StudySession, StudyGoal, StudyAnalytics
-from progress.models import Progress, LearningStreak, SubjectProgress
+from progress.models import Progress, LearningStreak
 from learning_paths.models import LearningPath, LearningPathStep
 from ai_explanations.models import AIExplanation, ContentAnalysis
 
@@ -57,7 +57,7 @@ def create_sample_data():
                 'last_name': 'Doe',
                 'learning_style': 'kinesthetic',
                 'difficulty_preference': 'beginner',
-                'preferred_subjects': ['mathematics', 'programming']
+                
             }
         )
         if created:

@@ -46,10 +46,6 @@ const userSchema = new mongoose.Schema({
     maxlength: [500, 'Bio cannot be more than 500 characters']
   },
   learningPreferences: {
-    preferredSubjects: [{
-      type: String,
-      enum: ['mathematics', 'science', 'history', 'literature', 'programming', 'languages', 'art', 'music', 'business', 'technology']
-    }],
     learningStyle: {
       type: String,
       enum: ['visual', 'auditory', 'kinesthetic', 'reading'],

@@ -26,3 +26,4 @@ chardet>=5.0.0
 # AI model dependencies
 bitsandbytes>=0.41.0
 accelerate>=0.20.0 
+google-generativeai>=0.8.0

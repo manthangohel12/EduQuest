@@ -1,7 +1,7 @@
 from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
 from courses.models import Course
-from progress.models import Progress, LearningStreak, SubjectProgress
+from progress.models import Progress, LearningStreak
 from django.utils import timezone
 
 User = get_user_model()
@@ -98,30 +98,7 @@ class Command(BaseCommand):
             streak.save()
             self.stdout.write(f'Updated learning streak for {user.username}')
         
-        # Create subject progress
-        subject_progress, created = SubjectProgress.objects.get_or_create(
-            user=user,
-            subject='Computer Science',
-            defaults={
-                'courses_enrolled': 1,
-                'courses_completed': 0,
-                'total_time_spent': 120,
-                'average_score': 84.33,
-                'topics_covered': ['Programming Basics', 'Data Structures'],
-                'difficulty_level': 'beginner',
-                'preferred_learning_methods': ['Video Lectures', 'Practice Exercises'],
-                'study_patterns': {'morning_study': True, 'weekend_focus': True}
-            }
-        )
         
-        if created:
-            self.stdout.write(f'Created subject progress for {user.username} - Computer Science')
-        else:
-            subject_progress.courses_enrolled = 1
-            subject_progress.total_time_spent = 120
-            subject_progress.average_score = 84.33
-            subject_progress.save()
-            self.stdout.write(f'Updated subject progress for {user.username} - Computer Science')
         
         self.stdout.write(
             self.style.SUCCESS('Successfully created sample data for testing summary generation!')

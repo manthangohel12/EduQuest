@@ -15,7 +15,7 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'email', 'first_name', 'last_name',
             'password', 'password_confirm', 'learning_style',
-            'difficulty_preference', 'preferred_subjects'
+            'difficulty_preference'
         ]
         extra_kwargs = {
             'first_name': {'required': True},
@@ -44,7 +44,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'username', 'email', 'first_name', 'last_name',
             'bio', 'avatar', 'learning_style', 'difficulty_preference',
-            'preferred_subjects', 'total_study_time', 'total_courses_completed',
+            'total_study_time', 'total_courses_completed',
             'current_streak', 'longest_streak', 'experience_points',
             'level', 'badges', 'notifications_enabled', 'email_notifications',
             'study_reminders', 'created_at', 'updated_at'
@@ -73,7 +73,7 @@ class UserPreferencesSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = [
-            'learning_style', 'difficulty_preference', 'preferred_subjects',
+            'learning_style', 'difficulty_preference',
             'notifications_enabled', 'email_notifications', 'study_reminders'
         ]
 

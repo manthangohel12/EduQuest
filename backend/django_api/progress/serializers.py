@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Progress, LearningStreak, SubjectProgress, LearningAnalytics, LearningGoal
+from .models import Progress, LearningStreak, LearningAnalytics, LearningGoal
 from courses.serializers import CourseSerializer
 
 
@@ -48,31 +48,7 @@ class LearningStreakSerializer(serializers.ModelSerializer):
         ]
 
 
-class SubjectProgressSerializer(serializers.ModelSerializer):
-    """Serializer for subject progress."""
     
-    class Meta:
-        model = SubjectProgress
-        fields = [
-            'id', 'subject', 'courses_enrolled', 'courses_completed',
-            'total_time_spent', 'average_score', 'topics_covered',
-            'difficulty_level', 'preferred_learning_methods', 'study_patterns',
-            'created_at', 'updated_at'
-        ]
-        read_only_fields = [
-            'id', 'courses_enrolled', 'courses_completed', 'created_at', 'updated_at'
-        ]
-
-
-class SubjectProgressUpdateSerializer(serializers.ModelSerializer):
-    """Serializer for updating subject progress."""
-    
-    class Meta:
-        model = SubjectProgress
-        fields = [
-            'total_time_spent', 'average_score', 'topics_covered',
-            'difficulty_level', 'preferred_learning_methods', 'study_patterns'
-        ]
 
 
 class LearningAnalyticsSerializer(serializers.ModelSerializer):
@@ -83,7 +59,7 @@ class LearningAnalyticsSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'date', 'study_time', 'sessions_count', 'courses_accessed',
             'quizzes_taken', 'average_quiz_score', 'focus_score',
-            'productivity_score', 'preferred_subjects', 'study_times',
+            'productivity_score', 'study_times',
             'learning_methods', 'insights', 'recommendations', 'created_at'
         ]
         read_only_fields = ['id', 'created_at']
@@ -101,14 +77,7 @@ class ProgressSummarySerializer(serializers.Serializer):
     average_quiz_score = serializers.FloatField()
 
 
-class SubjectBreakdownSerializer(serializers.Serializer):
-    """Serializer for subject breakdown."""
-    subject = serializers.CharField()
-    courses_enrolled = serializers.IntegerField()
-    courses_completed = serializers.IntegerField()
-    total_time_spent = serializers.IntegerField()
-    average_score = serializers.FloatField()
-    completion_percentage = serializers.FloatField()
+    
 
 
 class LearningInsightsSerializer(serializers.Serializer):

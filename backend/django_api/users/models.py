@@ -12,7 +12,6 @@ class User(AbstractUser):
     avatar = models.ImageField(upload_to='avatars/', null=True, blank=True)
     
     # Learning preferences
-    preferred_subjects = models.JSONField(default=list, blank=True)
     learning_style = models.CharField(
         max_length=20,
         choices=[

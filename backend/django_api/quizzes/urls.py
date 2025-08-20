@@ -18,6 +18,9 @@ urlpatterns = [
     
     # Quiz generation
     path('generate/', views.generate_quiz, name='generate-quiz'),
+    # AI quiz save and attempt submission
+    path('ai/save/', views.save_ai_quiz, name='ai-save-quiz'),
+    path('ai/attempts/<int:quiz_id>/submit/', views.submit_ai_attempt, name='ai-submit-attempt'),
     
     # User statistics
     path('user-stats/', views.get_user_quiz_stats, name='user-quiz-stats'),

@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, Bot, User, MessageSquare, Sparkles, BookOpen, Lightbulb } from 'lucide-react';
-import { nodeService, apiUtils } from '../../services/api';
+import { Send, Bot, User, MessageSquare, Sparkles, BookOpen, Lightbulb, Save, History } from 'lucide-react';
+import { nodeService, apiService, apiUtils, aiService } from '../../services/api';
+import { useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import LoadingSpinner from '../../components/Common/LoadingSpinner';
 
 const StudyChat = () => {
   const { user } = useAuth();
+  const location = useLocation();
   const [messages, setMessages] = useState([]);
   const [inputMessage, setInputMessage] = useState('');
   const [loading, setLoading] = useState(false);
@@ -13,6 +15,16 @@ const StudyChat = () => {
   const [currentSession, setCurrentSession] = useState(null);
   const [sessions, setSessions] = useState([]);
   const messagesEndRef = useRef(null);
+  const [saving, setSaving] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [summaries, setSummaries] = useState([]);
+  const [showQuizHistory, setShowQuizHistory] = useState(false);
+  const [quizAttempts, setQuizAttempts] = useState([]);
+  const [quizHistoryLoading, setQuizHistoryLoading] = useState(false);
+  const [quizHistoryError, setQuizHistoryError] = useState('');
+  const [quizDetails, setQuizDetails] = useState({}); // { [quizId]: QuizDetail }
+  const [expandedQuizIds, setExpandedQuizIds] = useState({}); // { [quizId]: boolean }
+  const [contextText, setContextText] = useState('');
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -26,6 +38,14 @@ const StudyChat = () => {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Preload context from navigation (e.g., Content Simplifier)
+  useEffect(() => {
+    const incoming = (location && location.state) ? (location.state.context || location.state.content || '') : '';
+    if (incoming && typeof incoming === 'string') {
+      setContextText(incoming);
+    }
+  }, [location]);
 
   // Sample conversation starters
   const conversationStarters = [
@@ -43,6 +63,52 @@ const StudyChat = () => {
       setSessions(response.data);
     } catch (error) {
       apiUtils.handleError(error, 'Failed to load chat sessions');
+    }
+  };
+
+  const loadSummaryHistory = async () => {
+    if (!currentSession) {
+      setSummaries([]);
+      return;
+    }
+    try {
+      const resp = await nodeService.summaries.list({ sessionId: currentSession._id });
+      setSummaries(resp.data || []);
+    } catch (error) {
+      apiUtils.handleError(error, 'Failed to load summary history');
+    }
+  };
+
+  const loadQuizHistory = async () => {
+    setQuizHistoryLoading(true);
+    setQuizHistoryError('');
+    try {
+      const resp = await apiService.quizzes.listAttempts();
+      const items = Array.isArray(resp.data?.results) ? resp.data.results : (resp.data || []);
+      setQuizAttempts(items);
+    } catch (error) {
+      apiUtils.handleError(error, 'Failed to load quiz history');
+      setQuizHistoryError('Failed to load quiz history');
+    } finally {
+      setQuizHistoryLoading(false);
+    }
+  };
+
+  const fetchQuizDetail = async (quizId) => {
+    try {
+      if (quizDetails[quizId]) return;
+      const resp = await apiService.quizzes.getById(quizId);
+      setQuizDetails(prev => ({ ...prev, [quizId]: resp.data }));
+    } catch (error) {
+      apiUtils.handleError(error, 'Failed to load quiz details');
+    }
+  };
+
+  const toggleQuizExpand = async (quizId) => {
+    const willExpand = !expandedQuizIds[quizId];
+    setExpandedQuizIds(prev => ({ ...prev, [quizId]: willExpand }));
+    if (willExpand && !quizDetails[quizId]) {
+      await fetchQuizDetail(quizId);
     }
   };
 
@@ -96,12 +162,22 @@ const StudyChat = () => {
         });
       }
 
-      // Get AI response
-      const response = await simulateAIResponse(inputMessage);
+      // Get AI response from backend AI service
+      let responseText = '';
+      try {
+        const resp = await aiService.studyChatRespond(inputMessage, contextText);
+        responseText = resp?.data?.answer || '';
+        if (!responseText) {
+          responseText = "I'm here to help with study-related questions. Please try asking in a different way.";
+        }
+      } catch (e) {
+        apiUtils.handleError(e, 'AI response failed');
+        responseText = 'Sorry, the AI tutor is unavailable right now.';
+      }
       
       const aiMessage = {
         id: Date.now() + 1,
-        content: response,
+        content: responseText,
         messageType: 'text',
         sender: 'ai',
         timestamp: new Date().toISOString(),
@@ -112,7 +188,7 @@ const StudyChat = () => {
       // Save AI message to backend
       if (currentSession) {
         await nodeService.chat.addMessage(currentSession._id, {
-          content: response,
+          content: responseText,
           messageType: 'text',
           sender: 'ai'
         });
@@ -126,28 +202,42 @@ const StudyChat = () => {
     }
   };
 
-  const simulateAIResponse = async (message) => {
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Simple response logic (replace with actual AI service)
-    const responses = {
-      'quantum': "Quantum physics deals with the behavior of matter and energy at the atomic and subatomic levels. Think of it like this: while classical physics describes how objects move in predictable ways, quantum physics shows that at the smallest scales, particles can exist in multiple states simultaneously and can be connected regardless of distance.",
-      'calculus': "Calculus is the mathematical study of continuous change. Derivatives measure how fast something is changing at any given moment. For example, if you're driving a car, the derivative of your position gives you your speed, and the derivative of your speed gives you your acceleration.",
-      'machine learning': "Machine learning is a subset of artificial intelligence where computers learn patterns from data without being explicitly programmed. It's like teaching a computer to recognize patterns the way humans do, but using algorithms and statistics.",
-      'water cycle': "The water cycle is how water moves around our planet. Water evaporates from oceans and lakes, forms clouds, falls as rain or snow, and flows back to oceans. It's nature's way of recycling water!",
-      'quadratic': "Quadratic equations are equations with x² terms. To solve them, you can use the quadratic formula: x = (-b ± √(b² - 4ac)) / 2a. This gives you the values of x that make the equation true.",
-      'mitosis meiosis': "Mitosis creates two identical cells for growth and repair. Meiosis creates four cells with half the chromosomes for reproduction. Think of mitosis as copying a book, and meiosis as creating a summary."
-    };
-
-    const lowerMessage = message.toLowerCase();
-    for (const [key, response] of Object.entries(responses)) {
-      if (lowerMessage.includes(key)) {
-        return response;
-      }
+  const saveLastExchange = async () => {
+    if (!currentSession) {
+      apiUtils.handleError(new Error('Please create or load a session first.'));
+      return;
     }
 
-    return "I'd be happy to help you learn! Could you please provide more specific details about what you'd like to understand? I can explain concepts, solve problems, or help you with any subject you're studying.";
+    // Find the last AI message and the nearest preceding user message
+    const reversed = [...messages].reverse();
+    const lastAiIndex = reversed.findIndex(m => m.sender === 'ai');
+    if (lastAiIndex === -1) {
+      apiUtils.handleError(new Error('No AI response to save yet.'));
+      return;
+    }
+    const lastAiMessage = reversed[lastAiIndex];
+    const userBeforeAi = reversed.slice(lastAiIndex + 1).find(m => m.sender === 'user');
+    if (!userBeforeAi) {
+      apiUtils.handleError(new Error('Could not find the preceding user message.'));
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await nodeService.summaries.create({
+        originalContent: userBeforeAi.content,
+        summaryContent: lastAiMessage.content,
+        sessionId: currentSession._id,
+        source: 'chat',
+        metadata: { clientIds: { user: userBeforeAi.id, ai: lastAiMessage.id } },
+      });
+      apiUtils.handleSuccess('Summary saved');
+      if (showHistory) await loadSummaryHistory();
+    } catch (error) {
+      apiUtils.handleError(error, 'Failed to save summary');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleKeyPress = (e) => {
@@ -204,16 +294,49 @@ const StudyChat = () => {
                   <p className="text-sm text-gray-500">Always here to help you learn</p>
                 </div>
               </div>
-              <button
-                onClick={clearChat}
-                className="text-sm text-gray-500 hover:text-gray-700"
-              >
-                Clear Chat
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={saveLastExchange}
+                  disabled={saving || messages.length < 2}
+                  className="flex items-center gap-1 text-sm text-gray-600 hover:text-gray-800 disabled:opacity-50"
+                  title="Save last user/AI exchange as a summary"
+                >
+                  {saving ? <LoadingSpinner size="xs" /> : <Save className="w-4 h-4" />}
+                  <span>Save Summary</span>
+                </button>
+                <button
+                  onClick={async () => { const newShow = !showHistory; setShowHistory(newShow); if (newShow) await loadSummaryHistory(); }}
+                  className="flex items-center gap-1 text-sm text-gray-600 hover:text-gray-800"
+                  title="Toggle summary history"
+                >
+                  <History className="w-4 h-4" />
+                  <span>{showHistory ? 'Hide History' : 'View History'}</span>
+                </button>
+                <button
+                  onClick={async () => { const newShow = !showQuizHistory; setShowQuizHistory(newShow); if (newShow) await loadQuizHistory(); }}
+                  className="flex items-center gap-1 text-sm text-gray-600 hover:text-gray-800"
+                  title="Toggle quiz history"
+                >
+                  <BookOpen className="w-4 h-4" />
+                  <span>{showQuizHistory ? 'Hide Quiz History' : 'Quiz History'}</span>
+                </button>
+                <button
+                  onClick={clearChat}
+                  className="text-sm text-gray-500 hover:text-gray-700"
+                >
+                  Clear Chat
+                </button>
+              </div>
             </div>
 
             {/* Messages */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {contextText && (
+                <div className="mb-2 px-3 py-2 text-xs bg-blue-50 text-blue-700 border border-blue-200 rounded flex items-center justify-between">
+                  <span>Using context from previous page. Your questions will be answered based on it.</span>
+                  <button onClick={() => setContextText('')} className="text-blue-600 hover:underline">Clear</button>
+                </div>
+              )}
               {messages.length === 0 ? (
                 <div className="text-center py-8">
                   <MessageSquare className="w-12 h-12 text-gray-400 mx-auto mb-4" />
@@ -294,6 +417,94 @@ const StudyChat = () => {
 
         {/* Sidebar */}
         <div className="space-y-4">
+          {/* Summary History */}
+          {showHistory && (
+            <div className="card">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                <History className="w-5 h-5 mr-2" />
+                Summary History
+              </h3>
+              <div className="space-y-3 max-h-64 overflow-y-auto">
+                {summaries.length === 0 ? (
+                  <p className="text-sm text-gray-500">No summaries saved yet.</p>
+                ) : (
+                  summaries.map(s => (
+                    <div key={s._id} className="p-3 bg-gray-50 rounded-lg">
+                      <p className="text-sm text-gray-700 line-clamp-3">{s.summaryContent}</p>
+                      <p className="text-xs text-gray-400 mt-1">{new Date(s.createdAt).toLocaleString()}</p>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Quiz History */}
+          {showQuizHistory && (
+            <div className="card">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                <BookOpen className="w-5 h-5 mr-2" />
+                Quiz History
+              </h3>
+              <div className="space-y-3 max-h-80 overflow-y-auto">
+                {quizHistoryLoading ? (
+                  <div className="flex items-center gap-2 text-sm text-gray-600"><LoadingSpinner size="xs" /> Loading...</div>
+                ) : quizHistoryError ? (
+                  <p className="text-sm text-red-600">{quizHistoryError}</p>
+                ) : quizAttempts.length === 0 ? (
+                  <p className="text-sm text-gray-500">No quiz attempts yet.</p>
+                ) : (
+                  quizAttempts.map((a) => {
+                    const q = a.quiz || {};
+                    const qid = q.id;
+                    const expanded = !!expandedQuizIds[qid];
+                    const detail = qid ? quizDetails[qid] : null;
+                    return (
+                      <div key={a.id} className="p-3 bg-gray-50 rounded-lg">
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1 pr-2">
+                            <p className="font-medium text-gray-900 text-sm">{q.title || 'Untitled Quiz'}</p>
+                            <p className="text-xs text-gray-500 mt-1">
+                              {q.subject ? `${q.subject} • ` : ''}{q.difficulty ? q.difficulty : ''}{q.total_questions ? ` • ${q.total_questions} questions` : ''}
+                            </p>
+                            <p className="text-xs text-gray-400 mt-1">
+                              Attempted: {a.started_at ? new Date(a.started_at).toLocaleString() : '—'}
+                              {typeof a.score === 'number' ? ` • Score: ${Math.round(a.score)}%` : ''}
+                            </p>
+                          </div>
+                          {qid && (
+                            <button
+                              onClick={() => toggleQuizExpand(qid)}
+                              className="text-xs text-primary-600 hover:text-primary-700"
+                            >
+                              {expanded ? 'Hide Source' : 'View Source'}
+                            </button>
+                          )}
+                        </div>
+                        {expanded && (
+                          <div className="mt-2">
+                            {detail ? (
+                              <div>
+                                <p className="text-xs text-gray-500 mb-1">Source Content</p>
+                                <textarea
+                                  className="w-full text-xs p-2 border border-gray-200 rounded bg-white"
+                                  rows="4"
+                                  readOnly
+                                  value={detail.source_content || ''}
+                                />
+                              </div>
+                            ) : (
+                              <p className="text-xs text-gray-500">Loading content...</p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          )}
           {/* Quick Starters */}
           <div className="card">
             <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
@@ -314,7 +525,7 @@ const StudyChat = () => {
           </div>
 
           {/* Study Tips */}
-          <div className="card">
+          {/* <div className="card">
             <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
               <BookOpen className="w-5 h-5 mr-2" />
               Study Tips
@@ -333,7 +544,7 @@ const StudyChat = () => {
                 <p>Apply what you learn through exercises</p>
               </div>
             </div>
-          </div>
+          </div> */}
 
           {/* Chat Stats */}
           <div className="card">

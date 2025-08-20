@@ -35,7 +35,6 @@ const ProfileSettings = () => {
     pushNotifications: false,
     weeklyReports: true,
     difficultyLevel: 'medium',
-    preferredSubjects: ['Mathematics', 'Physics'],
     studySessionDuration: 45,
     breakDuration: 15,
     theme: 'light',
@@ -87,10 +86,7 @@ const ProfileSettings = () => {
     }));
   };
 
-  const availableSubjects = [
-    'Mathematics', 'Physics', 'Chemistry', 'Biology', 
-    'Computer Science', 'History', 'Literature', 'Economics'
-  ];
+  
 
   const tabs = [
     { id: 'profile', name: 'Profile', icon: User },
@@ -189,33 +185,6 @@ const ProfileSettings = () => {
               <option value="advanced">Advanced</option>
               <option value="expert">Expert</option>
             </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Preferred Subjects
-            </label>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-              {availableSubjects.map((subject) => (
-                <label key={subject} className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    checked={preferences.preferredSubjects.includes(subject)}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        handlePreferenceChange('preferredSubjects', [...preferences.preferredSubjects, subject]);
-                      } else {
-                        handlePreferenceChange('preferredSubjects', 
-                          preferences.preferredSubjects.filter(s => s !== subject)
-                        );
-                      }
-                    }}
-                    className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                  />
-                  <span className="text-sm text-gray-700">{subject}</span>
-                </label>
-              ))}
-            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

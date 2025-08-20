@@ -134,60 +134,7 @@ class LearningStreak(models.Model):
         self.save()
 
 
-class SubjectProgress(models.Model):
-    """Model for tracking progress by subject."""
     
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='subject_progress')
-    subject = models.CharField(max_length=50)
-    
-    # Progress metrics
-    courses_enrolled = models.IntegerField(default=0)
-    courses_completed = models.IntegerField(default=0)
-    total_time_spent = models.IntegerField(default=0, help_text='Total time in minutes')
-    average_score = models.FloatField(default=0.0)
-    
-    # Subject-specific data
-    topics_covered = models.JSONField(default=list, help_text='List of topics covered')
-    difficulty_level = models.CharField(max_length=20, choices=[
-        ('beginner', 'Beginner'),
-        ('intermediate', 'Intermediate'),
-        ('advanced', 'Advanced')
-    ], default='beginner')
-    
-    # Learning insights
-    preferred_learning_methods = models.JSONField(default=list, help_text='Preferred learning methods')
-    study_patterns = models.JSONField(default=dict, help_text='Study patterns for this subject')
-    
-    # Timestamps
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    
-    class Meta:
-        db_table = 'subject_progress'
-        unique_together = ['user', 'subject']
-        ordering = ['-updated_at']
-    
-    def __str__(self):
-        return f"{self.user.username} - {self.subject}"
-    
-    def update_progress(self, time_spent=0, score=None):
-        """Update subject progress."""
-        self.total_time_spent += time_spent
-        
-        if score is not None:
-            # Update average score
-            if self.average_score == 0:
-                self.average_score = score
-            else:
-                self.average_score = (self.average_score + score) / 2
-        
-        self.save()
-    
-    def add_topic(self, topic):
-        """Add a topic to covered topics."""
-        if topic not in self.topics_covered:
-            self.topics_covered.append(topic)
-            self.save()
 
 
 class LearningAnalytics(models.Model):
@@ -208,7 +155,6 @@ class LearningAnalytics(models.Model):
     productivity_score = models.FloatField(default=0.0)
     
     # Learning patterns
-    preferred_subjects = models.JSONField(default=list, help_text='Most studied subjects')
     study_times = models.JSONField(default=list, help_text='Study session times')
     learning_methods = models.JSONField(default=list, help_text='Learning methods used')
     

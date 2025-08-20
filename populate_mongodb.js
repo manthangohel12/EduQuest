@@ -20,8 +20,7 @@ async function populateMongoDB() {
         isAdmin: true,
         learningPreferences: {
           learningStyle: 'visual',
-          difficultyPreference: 'intermediate',
-          preferredSubjects: ['Mathematics', 'Science', 'Programming']
+          difficultyPreference: 'intermediate'
         },
         studyStats: {
           totalStudyTime: 120,
@@ -40,8 +39,7 @@ async function populateMongoDB() {
         isAdmin: false,
         learningPreferences: {
           learningStyle: 'kinesthetic',
-          difficultyPreference: 'beginner',
-          preferredSubjects: ['Mathematics', 'Physics']
+          difficultyPreference: 'beginner'
         },
         studyStats: {
           totalStudyTime: 60,

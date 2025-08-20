@@ -184,17 +184,7 @@ def get_study_analytics(request):
     focus_score = sessions.aggregate(Avg('focus_rating'))['focus_rating__avg'] or 0
     mood_score = sessions.aggregate(Avg('mood_rating'))['mood_rating__avg'] or 0
     
-    # Get subject breakdown
-    subjects_studied = []
-    subject_time_breakdown = {}
     
-    for session in sessions:
-        if session.course:
-            subject = session.course.subject
-            if subject not in subjects_studied:
-                subjects_studied.append(subject)
-                subject_time_breakdown[subject] = 0
-            subject_time_breakdown[subject] += session.duration
     
     # Calculate productivity score
     productivity_score = 0
@@ -214,8 +204,7 @@ def get_study_analytics(request):
             'mood_score': round(mood_score, 2),
             'productivity_score': round(productivity_score, 2)
         },
-        'subjects_studied': subjects_studied,
-        'subject_time_breakdown': subject_time_breakdown
+        
     }
     
     return Response(analytics, status=status.HTTP_200_OK)

@@ -151,7 +151,7 @@ class StudyAnalyticsSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'user', 'date', 'total_study_time', 'sessions_count',
             'average_session_duration', 'focus_score', 'mood_score',
-            'productivity_score', 'subjects_studied', 'subject_time_breakdown',
+            'productivity_score',
             'insights', 'recommendations', 'study_time_formatted',
             'created_at', 'updated_at'
         ]
@@ -176,7 +176,6 @@ class StudySessionSummarySerializer(serializers.Serializer):
     average_session_duration = serializers.FloatField()
     current_streak = serializers.IntegerField()
     longest_streak = serializers.IntegerField()
-    favorite_subjects = serializers.ListField(child=serializers.CharField())
     weekly_progress = serializers.ListField(child=serializers.DictField())
     monthly_progress = serializers.ListField(child=serializers.DictField())
 
@@ -187,7 +186,6 @@ class StudyInsightsSerializer(serializers.Serializer):
     productivity_trend = serializers.CharField()
     recommended_study_time = serializers.CharField()
     focus_improvements = serializers.ListField(child=serializers.CharField())
-    subject_recommendations = serializers.ListField(child=serializers.DictField())
     study_pattern_analysis = serializers.DictField()
     next_week_goals = serializers.ListField(child=serializers.CharField())
 

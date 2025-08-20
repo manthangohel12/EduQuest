@@ -8,11 +8,13 @@ const QuizBuilder = () => {
   const location = useLocation();
   const [content, setContent] = useState('');
   const [quiz, setQuiz] = useState(null);
+  const [savedQuizId, setSavedQuizId] = useState(null);
   const [loading, setLoading] = useState(false);
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState({});
   const [showResults, setShowResults] = useState(false);
   const [score, setScore] = useState(0);
+  const [detailedResults, setDetailedResults] = useState([]);
   const [quizSettings, setQuizSettings] = useState({
     numQuestions: 5,
     difficulty: 'medium',
@@ -40,19 +42,48 @@ const QuizBuilder = () => {
 
     setLoading(true);
     try {
-      // Generate and set the quiz
+      // Generate quiz via AI service
       const response = await aiService.generateQuiz(content, {
         num_questions: quizSettings.numQuestions,
         difficulty: quizSettings.difficulty,
         question_types: quizSettings.questionTypes
       });
-
       const quizData = response.data;
-      setQuiz(quizData);
+
+      // Persist quiz to Django so we can track attempts and progress
+      const savePayload = {
+        title: `AI Generated Quiz`,
+        description: `AI-generated quiz (${quizSettings.questionTypes[0]})`,
+        subject: 'General',
+        difficulty: quizSettings.difficulty,
+        quiz_type: quizSettings.questionTypes[0],
+        source_content: content,
+        ai_prompt: `Generated ${quizSettings.numQuestions} ${quizSettings.questionTypes[0]} questions`,
+        questions: (quizData.questions || []).map(q => ({
+          question: q.question,
+          options: q.options || [],
+          correct_answer: q.correct_answer,
+          explanation: q.explanation || '',
+          type: q.type || quizSettings.questionTypes[0],
+        }))
+      };
+
+      const saveRes = await apiService.quizzes.saveAIQuiz(savePayload);
+      const { quiz_id: persistedQuizId, question_ids: persistedQuestionIds = [] } = saveRes.data || {};
+
+      // Replace transient question ids with persisted ids
+      const normalizedQuestions = (quizData.questions || []).map((q, idx) => ({
+        ...q,
+        id: persistedQuestionIds[idx] || (idx + 1)
+      }));
+
+      setQuiz({ ...quizData, questions: normalizedQuestions });
+      setSavedQuizId(persistedQuizId || null);
       setCurrentQuestion(0);
       setAnswers({});
       setShowResults(false);
       setScore(0);
+      setDetailedResults([]);
       
       // The quiz is already saved by the generateQuiz endpoint
       apiUtils.handleSuccess('Quiz generated successfully!');
@@ -82,20 +113,28 @@ const QuizBuilder = () => {
     }
   };
 
-  const handleSubmitQuiz = () => {
-    let correctAnswers = 0;
-    const totalQuestions = quiz.questions.length;
-
-    quiz.questions.forEach((question, index) => {
-      const userAnswer = answers[question.id];
-      if (userAnswer === question.correct_answer) {
-        correctAnswers++;
+  const handleSubmitQuiz = async () => {
+    try {
+      if (!savedQuizId) {
+        apiUtils.handleError(new Error('Quiz not saved. Please re-generate.'));
+        return;
       }
-    });
-
-    const finalScore = Math.round((correctAnswers / totalQuestions) * 100);
-    setScore(finalScore);
-    setShowResults(true);
+      const payload = {
+        answers: quiz.questions.map(q => ({
+          question_id: q.id,
+          user_answer: answers[q.id]
+        })),
+        time_taken: 0
+      };
+      const res = await apiService.quizzes.submitAIAttempt(savedQuizId, payload);
+      const data = res.data || {};
+      setScore(Math.round(data.score || 0));
+      setDetailedResults(Array.isArray(data.results) ? data.results : []);
+      setShowResults(true);
+      apiUtils.handleSuccess('Quiz submitted!');
+    } catch (e) {
+      apiUtils.handleError(e, 'Failed to submit quiz');
+    }
   };
 
   const getDifficultyColor = (difficulty) => {
@@ -381,6 +420,34 @@ const QuizBuilder = () => {
                   </div>
                 </div>
 
+                {detailedResults.length > 0 && (
+                  <div className="mt-6 text-left">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-3">Review Answers</h3>
+                    <div className="space-y-4">
+                      {detailedResults.map((r, idx) => (
+                        <div key={idx} className={`p-4 rounded-lg border ${r.is_correct ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}`}>
+                          <p className="font-medium text-gray-900">Q{idx + 1}. {r.question}</p>
+                          <p className="text-sm mt-1"><span className="font-semibold">Your answer:</span> {String(r.user_answer)}</p>
+                          <p className="text-sm"><span className="font-semibold">Correct answer:</span> {String(r.correct_answer)}</p>
+                          {!r.is_correct && (
+                            <>
+                              {r.explanation && (
+                                <p className="text-sm mt-2"><span className="font-semibold">Explanation:</span> {r.explanation}</p>
+                              )}
+                              {r.reference_text && (
+                                <details className="mt-2">
+                                  <summary className="text-sm text-gray-700 cursor-pointer">Show context</summary>
+                                  <p className="text-sm text-gray-600 mt-1 whitespace-pre-wrap">{r.reference_text}</p>
+                                </details>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex items-center justify-center space-x-4">
                   <button
                     onClick={() => {
@@ -389,6 +456,7 @@ const QuizBuilder = () => {
                       setAnswers({});
                       setShowResults(false);
                       setScore(0);
+                      setDetailedResults([]);
                     }}
                     className="btn-primary"
                   >
@@ -400,6 +468,7 @@ const QuizBuilder = () => {
                       setAnswers({});
                       setShowResults(false);
                       setScore(0);
+                      setDetailedResults([]);
                     }}
                     className="btn-secondary"
                   >

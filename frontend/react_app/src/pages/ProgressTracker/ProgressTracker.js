@@ -20,28 +20,27 @@ import {
 import { 
   LineChart, 
   Line, 
-  BarChart, 
-  Bar, 
   XAxis, 
   YAxis, 
   CartesianGrid, 
   Tooltip, 
   ResponsiveContainer, 
-  PieChart, 
-  Pie, 
-  Cell, 
   AreaChart, 
   Area 
 } from 'recharts';
 import { apiService, apiUtils } from '../../services/api';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import LoadingSpinner from '../../components/Common/LoadingSpinner';
 
 const ProgressTracker = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [selectedPeriod, setSelectedPeriod] = useState('week');
   const [showGoalModal, setShowGoalModal] = useState(false);
+  const [showEditGoalModal, setShowEditGoalModal] = useState(false);
+  const [editGoal, setEditGoal] = useState(null);
   const [newGoal, setNewGoal] = useState({ 
     title: '', 
     description: '', 
@@ -55,7 +54,6 @@ const ProgressTracker = () => {
   const [progressData, setProgressData] = useState({
     overallScore: 0,
     weeklyProgress: [],
-    subjects: [],
     achievements: [],
     recentActivity: [],
     insights: [],
@@ -74,138 +72,111 @@ const ProgressTracker = () => {
     totalQuizzes: 0,
     averageQuizScore: 0
   });
+  const [attempts, setAttempts] = useState([]);
 
   // Fetch progress data
   useEffect(() => {
-    const fetchProgressData = async () => {
+    const fetchAll = async () => {
       try {
         setLoading(true);
-        
-        // Fetch progress data in parallel
-        const [progressResponse, subjectsResponse, insightsResponse] = await Promise.all([
+
+        // date range for chart based on selectedPeriod
+        const now = new Date();
+        const endDate = now.toISOString().slice(0, 10);
+        const start = new Date(now);
+        if (selectedPeriod === 'month') start.setDate(start.getDate() - 30);
+        else if (selectedPeriod === 'year') start.setDate(start.getDate() - 365);
+        else start.setDate(start.getDate() - 7);
+        const startDate = start.toISOString().slice(0, 10);
+
+        const [summaryRes, insightsRes, chartRes, goalsRes, recentRes, attemptsRes] = await Promise.all([
           apiService.progress.getAnalytics(),
-          apiService.progress.getSubjectBreakdown(),
-          apiService.progress.getLearningInsights()
+          apiService.progress.getLearningInsights(),
+          apiService.progress.getProgressChartData({ start_date: startDate, end_date: endDate }),
+          apiService.progress.getGoals(),
+          apiService.studySessions.getRecent(5),
+          apiService.quizzes.listAttempts()
         ]);
 
-        const progress = progressResponse.data || {};
-        const subjects = subjectsResponse.data || [];
-        const insights = insightsResponse.data || {};
+        const summary = summaryRes.data || {};
+        const insights = insightsRes.data || {};
+        const chart = chartRes.data || { labels: [], datasets: [] };
+        const goals = Array.isArray(goalsRes.data?.results) ? goalsRes.data.results : (Array.isArray(goalsRes.data) ? goalsRes.data : []);
+        const attemptsData = Array.isArray(attemptsRes.data?.results) ? attemptsRes.data.results : (Array.isArray(attemptsRes.data) ? attemptsRes.data : []);
+        setAttempts(attemptsData);
+        const recentSessions = Array.isArray(recentRes.data) ? recentRes.data : [];
 
-        // Update stats
         setStats({
-          totalCourses: progress.total_courses || 0,
-          completedCourses: progress.completed_courses || 0,
-          totalStudyTime: progress.total_study_time || 0,
-          currentStreak: progress.current_streak || 0,
-          longestStreak: progress.longest_streak || 0,
-          totalQuizzes: progress.total_quizzes_taken || 0,
-          averageQuizScore: progress.average_quiz_score || 0
+          totalCourses: summary.total_courses || 0,
+          completedCourses: summary.completed_courses || 0,
+          totalStudyTime: summary.total_study_time || 0,
+          currentStreak: summary.current_streak || 0,
+          longestStreak: summary.longest_streak || 0,
+          totalQuizzes: summary.total_quizzes_taken || 0,
+          averageQuizScore: summary.average_quiz_score || 0
         });
 
-        // Calculate overall score
-        const overallScore = progress.average_completion || 0;
-
-        // Generate weekly progress data
-        const last7Days = Array.from({ length: 7 }, (_, i) => {
-          const date = new Date();
-          date.setDate(date.getDate() - i);
-          return date.toISOString().split('T')[0];
-        }).reverse();
-
-        const weeklyProgress = last7Days.map(date => ({
-          day: new Date(date).toLocaleDateString('en-US', { weekday: 'short' }),
-          score: Math.floor(Math.random() * 30) + 70,
-          time: Math.floor(Math.random() * 60) + 30
+        const weeklyProgress = (chart.labels || []).map((label, idx) => ({
+          day: label,
+          score: chart.datasets?.[0]?.data?.[idx] ?? 0,
+          time: chart.datasets?.[1]?.data?.[idx] ?? 0
         }));
 
-        // Process subjects data
-        const processedSubjects = subjects.length > 0 ? subjects : [
-          { subject: 'Mathematics', completion_percentage: 75, total_time_spent: 120, courses_enrolled: 3, courses_completed: 2 },
-          { subject: 'Physics', completion_percentage: 60, total_time_spent: 90, courses_enrolled: 2, courses_completed: 1 },
-          { subject: 'Chemistry', completion_percentage: 45, total_time_spent: 60, courses_enrolled: 2, courses_completed: 0 },
-          { subject: 'Biology', completion_percentage: 80, total_time_spent: 150, courses_enrolled: 3, courses_completed: 2 },
-          { subject: 'Computer Science', completion_percentage: 90, total_time_spent: 200, courses_enrolled: 4, courses_completed: 3 }
-        ];
-
-        // Generate achievements based on actual data
+        // achievements derived dynamically
         const achievements = [
-          { 
-            name: 'First Course', 
-            description: 'Completed your first course', 
-            date: '2024-01-15', 
+          {
+            name: 'First Course',
+            description: 'Completed your first course',
+            date: new Date().toISOString().slice(0, 10),
             icon: '🎯',
-            achieved: stats.completedCourses > 0 
+            achieved: (summary.completed_courses || 0) > 0
           },
-          { 
-            name: 'Study Streak', 
-            description: `${stats.currentStreak} days of consistent studying`, 
-            date: '2024-01-20', 
+          {
+            name: 'Study Streak',
+            description: `${summary.current_streak || 0} days of consistent studying`,
+            date: new Date().toISOString().slice(0, 10),
             icon: '🔥',
-            achieved: stats.currentStreak > 0 
+            achieved: (summary.current_streak || 0) > 0
           },
-          { 
-            name: 'Quiz Master', 
-            description: 'Achieved high scores on quizzes', 
-            date: '2024-01-22', 
+          {
+            name: 'Quiz Master',
+            description: 'Achieved high scores on quizzes',
+            date: new Date().toISOString().slice(0, 10),
             icon: '⭐',
-            achieved: stats.averageQuizScore > 80 
-          },
-          { 
-            name: 'Subject Expert', 
-            description: 'Completed multiple courses in one subject', 
-            date: '2024-01-25', 
-            icon: '🏆',
-            achieved: processedSubjects.some(s => s.courses_completed > 1) 
+            achieved: (summary.average_quiz_score || 0) > 80
           }
         ];
 
-        // Generate recent activity
-        const recentActivity = [
-          { type: 'quiz', subject: 'Mathematics', score: 92, time: '2 hours ago' },
-          { type: 'study', subject: 'Physics', duration: 45, time: '1 day ago' },
-          { type: 'achievement', name: 'Perfect Score', time: '2 days ago' },
-          { type: 'quiz', subject: 'Chemistry', score: 88, time: '3 days ago' }
-        ];
+        const recentActivity = recentSessions.map(s => ({
+          type: 'study',
+          title: s.title || 'Study Session',
+          duration: s.duration || 0,
+          time: apiUtils.formatDate(s.started_at)
+        }));
 
         setProgressData({
-          overallScore,
+          overallScore: summary.average_completion || 0,
           weeklyProgress,
-          subjects: processedSubjects,
           achievements,
           recentActivity,
           insights: insights.insights || [],
           recommendations: insights.recommendations || [],
           strengths: insights.strengths || [],
           weaknesses: insights.weaknesses || [],
-          goals: []
+          goals
         });
-
       } catch (error) {
-        console.error('Error fetching progress data:', error);
+        console.error('Progress load error:', error);
         apiUtils.handleError(error, 'Failed to load progress data');
-        
-        // Set fallback data
-        setProgressData(prev => ({
-          ...prev,
-          weeklyProgress: [],
-          subjects: [],
-          achievements: [],
-          recentActivity: []
-        }));
+        setProgressData(prev => ({ ...prev, weeklyProgress: [], achievements: [], recentActivity: [] }));
       } finally {
         setLoading(false);
       }
     };
+    fetchAll();
+  }, [selectedPeriod]);
 
-    fetchProgressData();
-  }, []);
-
-  const COLORS = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6'];
-
-  const getSubjectColor = (index) => {
-    return COLORS[index % COLORS.length];
-  };
+  
 
   const getProgressColor = (progress) => {
     if (progress >= 90) return 'text-green-600';
@@ -234,12 +205,11 @@ const ProgressTracker = () => {
     }
 
     try {
-      console.log('Creating goal with data:', newGoal);
       const response = await apiService.progress.createGoal(newGoal);
-      setProgressData(prev => ({
-        ...prev,
-        goals: [...prev.goals, response.data]
-      }));
+      // reload goals list to stay consistent with backend
+      const goalsRes = await apiService.progress.getGoals();
+      const goals = Array.isArray(goalsRes.data?.results) ? goalsRes.data.results : (Array.isArray(goalsRes.data) ? goalsRes.data : []);
+      setProgressData(prev => ({ ...prev, goals }));
       setNewGoal({ 
         title: '', 
         description: '', 
@@ -254,6 +224,52 @@ const ProgressTracker = () => {
     } catch (error) {
       console.error('Goal creation error:', error);
       apiUtils.handleError(error, 'Failed to add goal');
+    }
+  };
+
+  const openEditGoalModal = (goal) => {
+    setEditGoal({ ...goal });
+    setShowEditGoalModal(true);
+  };
+  const handleSaveEditGoal = async () => {
+    if (!editGoal) return;
+    try {
+      await handleUpdateGoal(editGoal);
+      setShowEditGoalModal(false);
+      setEditGoal(null);
+    } catch (e) {}
+  };
+
+  const handleDeleteGoal = async (goalId) => {
+    try {
+      await apiService.progress.deleteGoal(goalId);
+      const goalsRes = await apiService.progress.getGoals();
+      const goals = Array.isArray(goalsRes.data?.results) ? goalsRes.data.results : (Array.isArray(goalsRes.data) ? goalsRes.data : []);
+      setProgressData(prev => ({ ...prev, goals }));
+      apiUtils.handleSuccess('Goal deleted');
+    } catch (error) {
+      apiUtils.handleError(error, 'Failed to delete goal');
+    }
+  };
+
+  const handleUpdateGoal = async (goal) => {
+    try {
+      const payload = {
+        title: goal.title,
+        description: goal.description || '',
+        goal_type: goal.goal_type,
+        target_value: goal.target_value,
+        deadline: goal.deadline,
+        priority: goal.priority,
+        difficulty: goal.difficulty,
+      };
+      await apiService.progress.updateGoal(goal.id, payload);
+      const goalsRes = await apiService.progress.getGoals();
+      const goals = Array.isArray(goalsRes.data?.results) ? goalsRes.data.results : (Array.isArray(goalsRes.data) ? goalsRes.data : []);
+      setProgressData(prev => ({ ...prev, goals }));
+      apiUtils.handleSuccess('Goal updated');
+    } catch (error) {
+      apiUtils.handleError(error, 'Failed to update goal');
     }
   };
 
@@ -328,84 +344,88 @@ const ProgressTracker = () => {
         </div>
       </div>
 
-      {/* Progress Charts */}
+      {/* Key Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="card">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Completed Courses</p>
+              <p className="text-2xl font-bold text-gray-900">{stats.completedCourses}</p>
+            </div>
+            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+              <Award className="w-6 h-6 text-green-600" />
+            </div>
+          </div>
+        </div>
+        <div className="card">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Total Quizzes</p>
+              <p className="text-2xl font-bold text-gray-900">{stats.totalQuizzes}</p>
+            </div>
+            <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+              <BookOpen className="w-6 h-6 text-purple-600" />
+            </div>
+          </div>
+        </div>
+        <div className="card">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Longest Streak</p>
+              <p className="text-2xl font-bold text-gray-900">{stats.longestStreak} days</p>
+            </div>
+            <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
+              <TrendingUp className="w-6 h-6 text-orange-600" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Previous Quizzes (Scrollable) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Weekly Progress Chart */}
         <div className="card">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">Weekly Progress</h3>
-            <select
-              value={selectedPeriod}
-              onChange={(e) => setSelectedPeriod(e.target.value)}
-              className="text-sm border border-gray-300 rounded-lg px-2 py-1"
-            >
-              <option value="week">This Week</option>
-              <option value="month">This Month</option>
-              <option value="year">This Year</option>
-            </select>
+            <h3 className="text-lg font-semibold text-gray-900">Previous Quizzes</h3>
           </div>
-          <ResponsiveContainer width="100%" height={300}>
-            <AreaChart data={progressData.weeklyProgress}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="day" />
-              <YAxis />
-              <Tooltip />
-              <Area type="monotone" dataKey="score" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.3} />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* Subject Performance */}
-        <div className="card">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Subject Performance</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={progressData.subjects}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="subject" />
-              <YAxis />
-              <Tooltip />
-              <Bar dataKey="completion_percentage" fill="#22c55e" />
-            </BarChart>
-          </ResponsiveContainer>
+          <div className="max-h-80 overflow-y-auto space-y-3 pr-1">
+            {attempts.length === 0 ? (
+              <div className="p-3 bg-gray-50 rounded-lg border border-gray-200 text-sm text-gray-600">
+                No quiz attempts yet.
+              </div>
+            ) : (
+              attempts.map((att) => (
+                <div key={att.id} className="p-3 rounded-lg border flex items-center justify-between">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-gray-900 truncate">{att.quiz?.title || 'Quiz'}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{apiUtils.formatDate(att.started_at)} • {att.total_questions} questions</p>
+                  </div>
+                  <div className="flex items-center space-x-3 ml-3">
+                    <span className={`text-sm font-semibold ${att.score >= 80 ? 'text-green-600' : att.score >= 60 ? 'text-yellow-600' : 'text-red-600'}`}>{Math.round(att.score || 0)}%</span>
+                    <button
+                      onClick={async () => {
+                        try {
+                          const quizId = att.quiz?.id;
+                          if (!quizId) return;
+                          const quizRes = await apiService.quizzes.getById(quizId);
+                          const q = quizRes.data || {};
+                          navigate('/quiz', { state: { content: q.source_content || '', source: 'saved' } });
+                        } catch (e) {
+                          apiUtils.handleError(e, 'Unable to open quiz');
+                        }
+                      }}
+                      className="btn-secondary text-sm px-3 py-1"
+                    >
+                      Retake
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Subject Details */}
-      <div className="card">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Subject Details</h3>
-        <div className="space-y-4">
-          {progressData.subjects.map((subject, index) => (
-            <div key={subject.subject} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-              <div className="flex items-center space-x-4">
-                <div 
-                  className="w-4 h-4 rounded-full"
-                  style={{ backgroundColor: getSubjectColor(index) }}
-                ></div>
-                <div>
-                  <h4 className="font-medium text-gray-900">{subject.subject}</h4>
-                  <p className="text-sm text-gray-500">
-                    {subject.courses_enrolled} courses • {formatTime(subject.total_time_spent)} studied
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center space-x-4">
-                <div className="text-right">
-                  <p className={`text-lg font-bold ${getProgressColor(subject.completion_percentage)}`}>
-                    {subject.completion_percentage}%
-                  </p>
-                  <p className="text-sm text-gray-500">Progress</p>
-                </div>
-                <div className="w-24 bg-gray-200 rounded-full h-2">
-                  <div
-                    className={`h-2 rounded-full ${getProgressBarColor(subject.completion_percentage)}`}
-                    style={{ width: `${subject.completion_percentage}%` }}
-                  ></div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
+      
 
       {/* Learning Insights and Goals */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -467,8 +487,20 @@ const ProgressTracker = () => {
                   <div className="flex items-center justify-between">
                     <div className="flex-1">
                       <h4 className="font-medium text-gray-900">{goal.title}</h4>
-                      <p className="text-sm text-gray-600">Target: {goal.target}</p>
+                      <p className="text-sm text-gray-600">Target: {goal.target_value}</p>
+                      <p className="text-sm text-gray-600">Current: {goal.current_value}</p>
                       <p className="text-xs text-gray-500">Deadline: {goal.deadline}</p>
+                      <p className={`text-xs mt-1 ${goal.is_completed ? 'text-green-600' : 'text-gray-600'}`}>
+                        {goal.is_completed ? 'Completed' : 'Active'}
+                      </p>
+                    </div>
+                    <div className="flex space-x-2">
+                      <button onClick={() => openEditGoalModal(goal)} className="btn-secondary px-2 py-1 text-xs flex items-center">
+                        <Edit3 className="w-4 h-4 mr-1" /> Edit
+                      </button>
+                      <button onClick={() => handleDeleteGoal(goal.id)} className="btn-secondary px-2 py-1 text-xs flex items-center">
+                        <Trash2 className="w-4 h-4 mr-1" /> Delete
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -534,8 +566,8 @@ const ProgressTracker = () => {
                 </div>
                 <div className="flex-1">
                   <p className="font-medium text-gray-900">
-                    {activity.type === 'quiz' && `${activity.subject} Quiz - ${activity.score}%`}
-                    {activity.type === 'study' && `${activity.subject} Study Session`}
+                    {activity.type === 'quiz' && `${activity.title} - ${activity.score}%`}
+                    {activity.type === 'study' && `${activity.title}`}
                     {activity.type === 'achievement' && activity.name}
                   </p>
                   <p className="text-sm text-gray-500">
@@ -579,45 +611,7 @@ const ProgressTracker = () => {
         </div>
       </div>
 
-      {/* Study Time Distribution */}
-      <div className="card">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Study Time Distribution</h3>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <ResponsiveContainer width="100%" height={300}>
-            <PieChart>
-              <Pie
-                data={progressData.subjects}
-                cx="50%"
-                cy="50%"
-                innerRadius={60}
-                outerRadius={100}
-                paddingAngle={5}
-                dataKey="total_time_spent"
-              >
-                {progressData.subjects.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={getSubjectColor(index)} />
-                ))}
-              </Pie>
-              <Tooltip />
-            </PieChart>
-          </ResponsiveContainer>
-          
-          <div className="space-y-3">
-            {progressData.subjects.map((subject, index) => (
-              <div key={subject.subject} className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <div 
-                    className="w-3 h-3 rounded-full"
-                    style={{ backgroundColor: getSubjectColor(index) }}
-                  ></div>
-                  <span className="text-sm font-medium">{subject.subject}</span>
-                </div>
-                <span className="text-sm text-gray-600">{formatTime(subject.total_time_spent)}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+      
 
       {/* Goal Modal */}
       {showGoalModal && (
@@ -717,6 +711,107 @@ const ProgressTracker = () => {
                 className="btn-primary px-4 py-2"
               >
                 Add Goal
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Goal Modal */}
+      {showEditGoalModal && editGoal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Edit Learning Goal</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Goal Title</label>
+                <input
+                  type="text"
+                  value={editGoal.title}
+                  onChange={(e) => setEditGoal(prev => ({ ...prev, title: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Description (Optional)</label>
+                <textarea
+                  value={editGoal.description || ''}
+                  onChange={(e) => setEditGoal(prev => ({ ...prev, description: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  rows="3"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Target Value</label>
+                <input
+                  type="text"
+                  value={editGoal.target_value}
+                  onChange={(e) => setEditGoal(prev => ({ ...prev, target_value: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Deadline</label>
+                <input
+                  type="date"
+                  value={editGoal.deadline}
+                  onChange={(e) => setEditGoal(prev => ({ ...prev, deadline: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Goal Type</label>
+                <select
+                  value={editGoal.goal_type}
+                  onChange={(e) => setEditGoal(prev => ({ ...prev, goal_type: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                >
+                  <option value="completion">Course Completion</option>
+                  <option value="score">Quiz Score</option>
+                  <option value="time">Study Time</option>
+                  <option value="streak">Learning Streak</option>
+                  <option value="custom">Custom Goal</option>
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Priority</label>
+                  <select
+                    value={editGoal.priority}
+                    onChange={(e) => setEditGoal(prev => ({ ...prev, priority: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  >
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Difficulty</label>
+                  <select
+                    value={editGoal.difficulty}
+                    onChange={(e) => setEditGoal(prev => ({ ...prev, difficulty: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  >
+                    <option value="easy">Easy</option>
+                    <option value="moderate">Moderate</option>
+                    <option value="hard">Hard</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center justify-end space-x-3 mt-6">
+              <button
+                onClick={() => { setShowEditGoalModal(false); setEditGoal(null); }}
+                className="btn-secondary px-4 py-2"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveEditGoal}
+                className="btn-primary px-4 py-2"
+              >
+                Save Changes
               </button>
             </div>
           </div>
