@@ -119,6 +119,7 @@ app.use('*', (req, res) => {
   });
 });
 
+// EDITED: default port set to 3001 after port swap
 const PORT = process.env.PORT || 3001;
 
 server.listen(PORT, () => {

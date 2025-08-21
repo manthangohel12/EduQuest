@@ -563,13 +563,13 @@ const onToggleGoalCompletionDebug = async (goalId, currentStatus) => {
       link: '/quiz',
       color: 'accent'
     },
-    {
-      title: 'View Progress',
-      description: 'Track your learning',
-      icon: BarChart3,
-      link: '/progress',
-      color: 'primary'
-    }
+    // {
+    //   title: 'View Progress',
+    //   description: 'Track your learning',
+    //   icon: BarChart3,
+    //   link: '/progress',
+    //   color: 'primary'
+    // }
   ];
 
   if (loading) {

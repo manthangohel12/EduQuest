@@ -55,9 +55,11 @@ services:
       - NODE_ENV=development
       - MONGODB_URI=mongodb://admin:password123@mongodb:27017/eduquest?authSource=admin
       - JWT_SECRET=your-jwt-secret-here
-      - PORT=3000
+      # EDITED: React dev server runs on 3000 after swap
+      - FRONTEND_URL=http://localhost:3000
+      - PORT=3001
     ports:
-      - "3000:3000"
+      - "3001:3001"
     volumes:
       - ./backend/node_api:/app
       - /app/node_modules
@@ -96,9 +98,9 @@ services:
     environment:
       - REACT_APP_API_URL=http://localhost:8000
       - REACT_APP_AI_SERVICES_URL=http://localhost:8001
-      - REACT_APP_NODE_API_URL=http://localhost:3000
+      - REACT_APP_NODE_API_URL=http://localhost:3001
     ports:
-      - "3001:3000"
+      - "3000:3000"
     volumes:
       - ./frontend/react_app:/app
       - /app/node_modules

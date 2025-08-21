@@ -49,9 +49,9 @@ REM Wait for Django to start
 echo [INFO] Waiting for Django API to initialize...
 timeout /t 5 /nobreak > nul
 
-REM Start Node.js API (Port 3001)
-echo [INFO] Starting Node.js API on port 3001...
-start "Node.js API" cmd /k "title Node.js API - Port 3001 && cd backend\node_api && npm run dev"
+REM Start Node.js API (Port 3000)
+echo [INFO] Starting Node.js API on port 3000...
+start "Node.js API" cmd /k "title Node.js API - Port 3000 && cd backend\node_api && npm run dev"
 
 REM Wait for Node.js to start
 echo [INFO] Waiting for Node.js API to initialize...
@@ -76,7 +76,7 @@ echo ==========================================
 echo.
 echo 📱 Frontend: http://localhost:3000
 echo 🔧 Django API: http://localhost:8000
-echo 🔌 Node.js API: http://localhost:3001
+echo 🔌 Node.js API: http://localhost:3000
 echo 🤖 AI Services: http://localhost:8001
 echo.
 echo 📚 API Documentation:

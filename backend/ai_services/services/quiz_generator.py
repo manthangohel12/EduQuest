@@ -535,7 +535,9 @@ class QuizGenerator:
             }
         
         # Intelligent content chunking for large content
-        chunks = self._chunk_content_intelligently(content, max_chunk_size=3000)
+        max_chunk_size = 1500 if self.fast_mode else 3000
+        chunks = self._chunk_content_intelligently(content, max_chunk_size=max_chunk_size)
+
         
         all_questions = []
         questions_per_chunk = max(1, num_questions // len(chunks))
@@ -681,38 +683,51 @@ class QuizGenerator:
         """Try generating questions with Ollama"""
         try:
             # Optimized prompt for Ollama
-            prompt = f"""Generate {num_questions} {difficulty} level quiz questions from this content. Return ONLY valid JSON array.
+            prompt = f"""Generate {num_questions} {difficulty} level quiz questions from this content. 
+    Return ONLY valid JSON array, no extra text.
 
-Content: {content[:1500]}
+    Content: {content[:1500]}
 
-Format exactly like this:
-[{{"question":"What is X?","type":"{question_types[0]}","reference_text":"X is important","difficulty":"{difficulty}"}}]
-
-Requirements:
+    Format:
+    [
+    {{
+        "question": "What is X?",
+        "type": "{question_types[0]}",
+        "reference_text": "X is important",
+        "difficulty": "{difficulty}"
+    }}
+    ]Requirements:
 - {num_questions} questions only
 - Type: {question_types[0]}  
 - Difficulty: {difficulty}
 - Include reference_text from content
 - Valid JSON only, no other text
-"""
+
+    """
 
             response = self._call_ollama_api(self.question_model, prompt, max_tokens=800)
-            
+
             if response:
-                # Clean the response to extract JSON
-                json_start = response.find('[')
-                json_end = response.rfind(']') + 1
-                if json_start != -1 and json_end > json_start:
-                    json_str = response[json_start:json_end]
-                    questions = json.loads(json_str)
-                    if isinstance(questions, list) and len(questions) > 0:
-                        return questions[:num_questions]
-            
+                import re, json
+
+                # Extract the first JSON array with regex
+                match = re.search(r'\[[\s\S]*\]', response)
+                if match:
+                    json_str = match.group()
+                    try:
+                        questions = json.loads(json_str)
+                        if isinstance(questions, list) and len(questions) > 0:
+                            return questions[:num_questions]
+                    except json.JSONDecodeError as e:
+                        print(f"⚠️ JSON decode failed: {e}")
+                        return []
+
             return []
-            
+
         except Exception as e:
             print(f"⚠️ Ollama question generation error: {e}")
             return []
+
 
     def _try_openai_question_generation(self, content: str, num_questions: int, difficulty: str, question_types: List[str]) -> List[Dict[str, Any]]:
         """Try generating questions with OpenAI"""

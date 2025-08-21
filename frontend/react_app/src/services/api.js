@@ -20,8 +20,9 @@ const aiApi = axios.create({
 });
 
 // Create Node.js API instance for real-time features
+// EDITED: default Node API fallback changed to port 3001 after port swap
 const nodeApi = axios.create({
-  baseURL: process.env.REACT_APP_NODE_API_URL || 'http://localhost:3000',
+  baseURL: process.env.REACT_APP_NODE_API_URL || 'http://localhost:3001',
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',

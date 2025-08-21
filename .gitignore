@@ -1,10 +1,10 @@
 # Project specific ignores
 
 # Environment files (except .env.example)
-.env
-.env.local
-.env.development
-.env.production
+# .env
+# .env.local
+# .env.development
+# .env.production
 
 # Python
 __pycache__/
@@ -59,11 +59,11 @@ yarn-debug.log*
 yarn-error.log*
 
 # Local development
-.DS_Store
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+# .DS_Store
+# .env.local
+# .env.development.local
+# .env.test.local
+# .env.production.local
 
 # Debug
 npm-debug.log*
@@ -216,7 +216,7 @@ celerybeat-schedule
 *.sage.py
 
 # Environments
-.env
+# .env
 .venv
 env/
 venv/
@@ -273,8 +273,8 @@ logs/
 *.log
 
 # Local development settings
-.env.local
-.env.*.local
+# .env.local
+# .env.*.local
 
 # AWS
 *.pem
@@ -334,11 +334,11 @@ yarn-error.log*
 .pnp.*
 
 # Environment variables
-.env
-.env.local
+# .env
+# .env.local
 .env.development.local
 .env.test.local
-.env.production.local
+.env.production.localx
 
 # Build directories
 /dist
