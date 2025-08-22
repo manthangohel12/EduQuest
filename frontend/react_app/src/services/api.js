@@ -197,8 +197,25 @@ export const aiService = {
   generateQuiz: (content, settings) =>
     aiApi.post('/generate-quiz', { content, ...settings }),
   
+  generateQuizWithRecommendations: (content, settings) =>
+    aiApi.post('/generate-quiz-with-recommendations', { content, ...settings }),
+  
+  getRecommendations: (content, contentType = 'text', maxRecommendations = 10) =>
+    aiApi.post('/get-recommendations', { content, content_type: contentType, max_recommendations: maxRecommendations }),
+  
+  simplifyWithRecommendations: (text, difficultyLevel = 'intermediate', targetAudience = 'student') =>
+    aiApi.post('/simplify-with-recommendations', { text, difficulty_level: difficultyLevel, target_audience: targetAudience }),
+  
   analyzeContent: (content) =>
     aiApi.post('/analyze-content', { content }),
+  
+  getIntelligentRecommendations: (content, topics, subject, maxRecommendations = 12) =>
+    aiApi.post('/get-intelligent-recommendations', { 
+      content, 
+      topics, 
+      subject, 
+      max_recommendations: maxRecommendations 
+    }),
   
   getSupportedFormats: () =>
     aiApi.get('/supported-formats'),

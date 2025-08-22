@@ -6,6 +6,7 @@ import Dashboard from './pages/Dashboard/Dashboard';
 import ContentSimplifier from './pages/ContentSimplifier/ContentSimplifier';
 import StudyChat from './pages/StudyChat/StudyChat';
 import QuizBuilder from './pages/QuizBuilder/QuizBuilder';
+import LearningRecommendations from './pages/LearningRecommendations/LearningRecommendations';
 import ProgressTracker from './pages/ProgressTracker/ProgressTracker';
 import LearningPath from './pages/LearningPath/LearningPath';
 import ProfileSettings from './pages/ProfileSettings/ProfileSettings';
@@ -37,6 +38,7 @@ const AppRoutes = () => {
         <Route path="simplify" element={<ContentSimplifier />} />
         <Route path="chat" element={<StudyChat />} />
         <Route path="quiz" element={<QuizBuilder />} />
+        <Route path="recommendations" element={<LearningRecommendations />} />
         <Route path="progress" element={<ProgressTracker />} />
         <Route path="learning-path" element={<LearningPath />} />
         <Route path="profile" element={<ProfileSettings />} />

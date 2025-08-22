@@ -17,7 +17,7 @@ import {
 import { apiService, apiUtils } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import LoadingSpinner from '../../components/Common/LoadingSpinner';
-import { useAppTimer } from '../hooks/useAppTimer'; // Adjust path as needed
+import { useAppTimer } from '../hooks/useAppTimer';
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -223,14 +223,13 @@ const onCompleteGoal = async (goalId) => {
   
 // // Simple and reliable app timer logic - replace the existing useEffect
 
+// Update stats when app timer changes
 useEffect(() => {
   setStats(prevStats => ({
     ...prevStats,
     studyTime: appMinutes
   }));
 }, [appMinutes]);
-
-
 
 // Add these debugging functions to help identify the API issue:
 
@@ -596,7 +595,7 @@ const onToggleGoalCompletionDebug = async (goalId, currentStatus) => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">App Time</p>
-              <p className="text-2xl font-bold text-gray-900">{formatHM(stats.studyTime)}</p>
+              <p className="text-2xl font-bold text-gray-900">{formatHM(appMinutes)}</p>
             </div>
             <div className="w-12 h-12 bg-secondary-100 rounded-lg flex items-center justify-center">
               <Clock className="w-6 h-6 text-secondary-600" />

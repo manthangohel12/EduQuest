@@ -12,6 +12,7 @@ import json
 
 from services.text_simplifier import TextSimplifier
 from services.quiz_generator import QuizGenerator
+from services.recommendation_service import RecommendationService
 
 load_dotenv()
 
@@ -33,6 +34,7 @@ app.add_middleware(
 # Initialize AI services
 text_simplifier = TextSimplifier()
 quiz_generator = QuizGenerator()
+recommendation_service = RecommendationService()
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -99,6 +101,37 @@ class StudyChatResponse(BaseModel):
     is_study_related: bool
     model: str
 
+class RecommendationRequest(BaseModel):
+    content: str
+    content_type: str = "text"
+    max_recommendations: int = 10
+
+class ContentAnalysisRequest(BaseModel):
+    content: str
+
+class ContentAnalysisResponse(BaseModel):
+    topics: List[str]
+    subject: str
+    complexity: str
+    summary: str
+    key_concepts: List[str]
+
+class IntelligentRecommendationRequest(BaseModel):
+    content: str
+    topics: List[str]
+    subject: str
+    max_recommendations: int = 12
+
+class RecommendationResponse(BaseModel):
+    wikipedia: List[Dict[str, Any]]
+    youtube: List[Dict[str, Any]]
+    web_resources: List[Dict[str, Any]]
+    courses: List[Dict[str, Any]]
+    topics: List[str]
+    subject: str
+    total_recommendations: int
+    summary: str
+
 @app.get("/")
 async def root():
     return {"message": "EduQuest AI Services API", "version": "1.0.0"}
@@ -115,6 +148,35 @@ async def simplify_text(request: SimplifyRequest):
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Text simplification failed: {str(e)}")
+
+@app.post("/simplify-with-recommendations", response_model=Dict[str, Any])
+async def simplify_with_recommendations(request: SimplifyRequest):
+    """Simplify text and get recommendations in one call"""
+    try:
+        # Simplify text
+        simplify_result = await text_simplifier.simplify(
+            text=request.text,
+            difficulty_level=request.difficulty_level,
+            target_audience=request.target_audience
+        )
+        
+        # Get recommendations
+        recommendation_result = await recommendation_service.get_recommendations(
+            content=request.text,
+            content_type="text",
+            max_recommendations=8
+        )
+        
+        # Generate summary
+        summary = recommendation_service.get_recommendation_summary(recommendation_result)
+        recommendation_result["summary"] = summary
+        
+        return {
+            "simplification": simplify_result,
+            "recommendations": recommendation_result
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Text simplification and recommendation generation failed: {str(e)}")
 
 @app.post("/process-file", response_model=FileProcessResponse)
 async def process_file(
@@ -195,6 +257,86 @@ async def generate_quiz(request: QuizRequest):
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Quiz generation failed: {str(e)}")
+
+@app.post("/analyze-content", response_model=ContentAnalysisResponse)
+async def analyze_content(request: ContentAnalysisRequest):
+    """Analyze content using Gemini to identify topics and subject"""
+    try:
+        result = await recommendation_service.analyze_content_with_gemini(request.content)
+        return ContentAnalysisResponse(**result)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Content analysis failed: {str(e)}")
+
+@app.post("/get-intelligent-recommendations", response_model=RecommendationResponse)
+async def get_intelligent_recommendations(request: IntelligentRecommendationRequest):
+    """Get intelligent recommendations based on content analysis"""
+    try:
+        result = await recommendation_service.get_intelligent_recommendations(
+            content=request.content,
+            topics=request.topics,
+            subject=request.subject,
+            max_recommendations=request.max_recommendations
+        )
+        
+        # Generate summary
+        summary = recommendation_service.get_recommendation_summary(result)
+        result["summary"] = summary
+        
+        return RecommendationResponse(**result)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Intelligent recommendation generation failed: {str(e)}")
+
+@app.post("/get-recommendations", response_model=RecommendationResponse)
+async def get_recommendations(request: RecommendationRequest):
+    """Get learning resource recommendations based on content"""
+    try:
+        result = await recommendation_service.get_recommendations(
+            content=request.content,
+            content_type=request.content_type,
+            max_recommendations=request.max_recommendations
+        )
+        
+        # Generate summary
+        summary = recommendation_service.get_recommendation_summary(result)
+        result["summary"] = summary
+        
+        return RecommendationResponse(**result)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Recommendation generation failed: {str(e)}")
+
+@app.post("/generate-quiz-with-recommendations", response_model=Dict[str, Any])
+async def generate_quiz_with_recommendations(request: QuizRequest):
+    """Generate quiz and get recommendations in one call"""
+    try:
+        # Generate quiz
+        quiz_result = quiz_generator.generate_quiz(
+            content=request.content,
+            num_questions=request.num_questions,
+            difficulty=request.difficulty,
+            question_types=request.question_types
+        )
+        
+        # Get recommendations
+        recommendation_result = await recommendation_service.get_recommendations(
+            content=request.content,
+            content_type="quiz",
+            max_recommendations=8
+        )
+        
+        # Generate summary
+        summary = recommendation_service.get_recommendation_summary(recommendation_result)
+        recommendation_result["summary"] = summary
+        
+        return {
+            "quiz": {
+                "questions": quiz_result.get("questions", []),
+                "total_questions": quiz_result.get("metadata", {}).get("total_questions", 0),
+                "estimated_difficulty": quiz_result.get("metadata", {}).get("difficulty", "medium")
+            },
+            "recommendations": recommendation_result
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Quiz and recommendation generation failed: {str(e)}")
 
 def _call_ollama_study_chat(question: str, context: Optional[str] = None) -> Dict[str, Any]:
     """Call local Ollama Mistral to respond to study questions and enforce domain restriction.

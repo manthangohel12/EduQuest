@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Upload, FileText, Sparkles, Copy, Download, BookOpen, Target, Users, HelpCircle, MessageSquare } from 'lucide-react';
+import { Upload, FileText, Sparkles, Copy, Download, BookOpen, Target, Users, HelpCircle, MessageSquare, Lightbulb } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { aiService, apiService, apiUtils } from '../../services/api';
 import LoadingSpinner from '../../components/Common/LoadingSpinner';
+
 
 const ContentSimplifier = () => {
   const navigate = useNavigate();
@@ -19,6 +20,7 @@ const ContentSimplifier = () => {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState('');
   const [historyItems, setHistoryItems] = useState([]);
+
 
   const handleContentChange = (e) => {
     setContent(e.target.value);
@@ -109,30 +111,58 @@ const ContentSimplifier = () => {
 
     setLoading(true);
     try {
-      const response = await aiService.simplifyText(content, difficultyLevel, targetAudience);
+      // Use the new endpoint that includes recommendations
+      const response = await aiService.simplifyWithRecommendations(content, difficultyLevel, targetAudience);
       
-      const { simplified_text, original_complexity, simplified_complexity, key_concepts, explanations } = response.data;
+      const { simplification } = response.data;
       
-      setSimplifiedContent(simplified_text);
-      setOriginalComplexity(original_complexity);
-      setSimplifiedComplexity(simplified_complexity);
-      setKeyConcepts(key_concepts);
-      setExplanations(explanations);
+      // Set simplification results
+      setSimplifiedContent(simplification.simplified_text);
+      setOriginalComplexity(simplification.original_complexity);
+      setSimplifiedComplexity(simplification.simplified_complexity);
+      setKeyConcepts(simplification.key_concepts);
+      setExplanations(simplification.explanations);
       
       // Save to backend
       await apiService.aiExplanations.create({
         original_content: content,
-        simplified_content: simplified_text,
+        simplified_content: simplification.simplified_text,
         difficulty_level: difficultyLevel,
         content_type: 'text',
-        key_concepts: key_concepts,
+        key_concepts: simplification.key_concepts,
         definitions: {},
-        examples: explanations
+        examples: simplification.explanations
       });
       
       apiUtils.handleSuccess('Content simplified successfully!');
     } catch (error) {
-      apiUtils.handleError(error, 'Failed to simplify content. Please try again.');
+      console.error('Simplification error:', error);
+      // Fallback to original method if recommendations fail
+      try {
+        const fallbackResponse = await aiService.simplifyText(content, difficultyLevel, targetAudience);
+        const { simplified_text, original_complexity, simplified_complexity, key_concepts, explanations } = fallbackResponse.data;
+        
+        setSimplifiedContent(simplified_text);
+        setOriginalComplexity(original_complexity);
+        setSimplifiedComplexity(simplified_complexity);
+        setKeyConcepts(key_concepts);
+        setExplanations(explanations);
+        
+        // Save to backend
+        await apiService.aiExplanations.create({
+          original_content: content,
+          simplified_content: simplified_text,
+          difficulty_level: difficultyLevel,
+          content_type: 'text',
+          key_concepts: key_concepts,
+          definitions: {},
+          examples: explanations
+        });
+        
+        apiUtils.handleSuccess('Content simplified successfully!');
+      } catch (fallbackError) {
+        apiUtils.handleError(fallbackError, 'Failed to simplify content. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -155,6 +185,23 @@ const ContentSimplifier = () => {
     URL.revokeObjectURL(url);
     apiUtils.handleSuccess('File downloaded successfully!');
   };
+
+  const handleGetRecommendations = () => {
+    if (!content.trim()) {
+      apiUtils.handleError(new Error('Please enter some content to get recommendations'));
+      return;
+    }
+
+    // Navigate to the dedicated recommendations page
+    navigate('/recommendations', { 
+      state: { 
+        content: content,
+        source: 'simplifier'
+      } 
+    });
+  };
+
+
 
   const handleGenerateQuiz = () => {
     if (simplifiedContent) {
@@ -350,6 +397,21 @@ const ContentSimplifier = () => {
                     Opens Study Chat with this simplified content as context
                   </p>
                 </div>
+
+                {/* Get Learning Recommendations Button */}
+                <div className="flex flex-col items-center space-y-2">
+                  <button
+                    onClick={handleGetRecommendations}
+                    disabled={loading}
+                    className="btn-secondary flex items-center space-x-2 px-6 py-3"
+                  >
+                    <Lightbulb className="w-5 h-5" />
+                    <span>Get Learning Recommendations</span>
+                  </button>
+                  <p className="text-xs text-gray-500 text-center">
+                    Discover Wikipedia articles, YouTube videos, and educational resources
+                  </p>
+                </div>
               </div>
             ) : (
               <div className="h-64 flex items-center justify-center border-2 border-dashed border-gray-300 rounded-lg">
@@ -360,6 +422,7 @@ const ContentSimplifier = () => {
               </div>
             )}
           </div>
+
 
         </div>
       </div>

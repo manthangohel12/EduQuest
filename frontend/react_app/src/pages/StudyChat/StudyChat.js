@@ -28,6 +28,13 @@ const StudyChat = () => {
   const [sessionLoading, setSessionLoading] = useState(false);
   const messagesEndRef = useRef(null);
 
+  // Normalize any message object coming from backend or local state
+  const toUiMessage = (msg) => ({
+    role: msg?.role ?? (msg?.isAI ? 'assistant' : 'user'),
+    content: msg?.content ?? '',
+    timestamp: msg?.timestamp || msg?.createdAt || msg?.updatedAt || new Date()
+  });
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -47,13 +54,13 @@ const StudyChat = () => {
     "What are the main principles of machine learning?",
     "Explain the water cycle for a 5th grader",
     "How do I solve quadratic equations?",
-    "What is the difference between mitosis and meiosis?",
-    "Tell me about ancient civilizations",
-    "How does photosynthesis work?",
-    "Explain the basics of programming",
-    "What are effective study techniques?",
-    "How do atoms form molecules?",
-    "What is the Renaissance period?"
+    // "What is the difference between mitosis and meiosis?",
+    // "Tell me about ancient civilizations",
+    // "How does photosynthesis work?",
+    // "Explain the basics of programming",
+    // "What are effective study techniques?",
+    // "How do atoms form molecules?",
+    // "What is the Renaissance period?"
   ];
 
   const loadSessions = async () => {
@@ -91,7 +98,7 @@ const StudyChat = () => {
         const newSession = data.data;
         console.log('Setting current session:', newSession);
         setCurrentSession(newSession);
-        setMessages([]);
+      setMessages([]);
         setShowSessions(false);
         await loadSessions();
         
@@ -119,7 +126,8 @@ const StudyChat = () => {
       const data = await response.json();
       if (data.success) {
         setCurrentSession(data.data);
-        setMessages(data.data.messages || []);
+        const normalized = (data.data.messages || []).map(toUiMessage);
+        setMessages(normalized);
         setShowSessions(false);
       }
     } catch (error) {
@@ -400,26 +408,26 @@ const StudyChat = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* Header */}
+      {/* Header */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center mb-4">
             <Brain className="w-12 h-12 text-blue-600 mr-3" />
             <h1 className="text-4xl font-bold text-gray-900">StudyChat AI</h1>
-          </div>
-          <p className="text-xl text-gray-600">Your intelligent study partner for learning assistance</p>
         </div>
+          <p className="text-xl text-gray-600">Your intelligent study partner for learning assistance</p>
+      </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Chat Interface */}
-          <div className="lg:col-span-3">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        {/* Chat Interface */}
+        <div className="lg:col-span-3">
             <div className="bg-white rounded-2xl shadow-lg h-[700px] flex flex-col">
-              {/* Chat Header */}
+            {/* Chat Header */}
               <div className="flex items-center justify-between p-6 border-b border-gray-200">
-                <div className="flex items-center space-x-3">
+              <div className="flex items-center space-x-3">
                   <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
                     <Bot className="w-6 h-6 text-blue-600" />
-                  </div>
-                  <div>
+                </div>
+                <div>
                     <h3 className="text-lg font-semibold text-gray-900">
                       {currentSession ? currentSession.subject : 'AI Study Assistant'}
                     </h3>
@@ -436,18 +444,18 @@ const StudyChat = () => {
                     <BookOpen className="w-4 h-4" />
                     Sessions
                   </button>
-                  <button
-                    onClick={clearChat}
-                    className="text-sm text-gray-500 hover:text-gray-700"
-                  >
-                    Clear Chat
-                  </button>
+              <button
+                onClick={clearChat}
+                className="text-sm text-gray-500 hover:text-gray-700"
+              >
+                Clear Chat
+              </button>
                 </div>
-              </div>
+            </div>
 
-              {/* Messages */}
+            {/* Messages */}
               <div className="flex-1 overflow-y-auto p-6 space-y-4">
-                {messages.length === 0 ? (
+              {messages.length === 0 ? (
                   <div className="text-center py-12">
                     <MessageSquare className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                     <h3 className="text-xl font-medium text-gray-900 mb-2">Start Learning Today!</h3>
@@ -462,113 +470,117 @@ const StudyChat = () => {
                         {sessionLoading ? 'Creating...' : 'Start New Session'}
                       </button>
                     )}
-                  </div>
-                ) : (
-                  messages.map((message, index) => (
+                </div>
+              ) : (
+                messages.map((message, index) => {
+                  const role = message?.role ?? (message?.isAI ? 'assistant' : 'user');
+                  const when = message?.timestamp || message?.createdAt || message?.updatedAt || new Date();
+                  return (
                     <div
                       key={index}
-                      className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                      className={`flex ${role === 'user' ? 'justify-end' : 'justify-start'}`}
                     >
                       <div
                         className={`max-w-xs lg:max-w-md px-4 py-3 rounded-2xl ${
-                          message.role === 'user'
+                          role === 'user'
                             ? 'bg-blue-600 text-white'
                             : 'bg-gray-100 text-gray-900'
                         }`}
                       >
                         <div className="flex items-start space-x-3">
-                          {message.role === 'assistant' && (
+                          {role === 'assistant' && (
                             <Bot className="w-5 h-5 text-blue-600 mt-1 flex-shrink-0" />
                           )}
                           <div className="flex-1">
                             <p className="text-sm whitespace-pre-wrap">{message.content}</p>
                             <p className={`text-xs mt-2 ${
-                              message.role === 'user' ? 'text-blue-200' : 'text-gray-500'
+                              role === 'user' ? 'text-blue-200' : 'text-gray-500'
                             }`}>
-                              {formatTime(message.timestamp)}
+                              {formatTime(when)}
                             </p>
                           </div>
-                          {message.role === 'user' && (
+                          {role === 'user' && (
                             <User className="w-5 h-5 text-blue-200 mt-1 flex-shrink-0" />
                           )}
                         </div>
                       </div>
                     </div>
-                  ))
-                )}
-                
-                {loading && (
-                  <div className="flex justify-start">
+                  );
+                })
+              )}
+              
+              {loading && (
+                <div className="flex justify-start">
                     <div className="bg-gray-100 text-gray-900 max-w-xs lg:max-w-md px-4 py-3 rounded-2xl">
                       <div className="flex items-center space-x-3">
                         <Bot className="w-5 h-5 text-blue-600" />
                         <LoadingSpinner size="sm" />
-                        <span className="text-sm">AI is thinking...</span>
+                      <span className="text-sm">AI is thinking...</span>
                       </div>
-                    </div>
                   </div>
-                )}
-                
-                <div ref={messagesEndRef} />
-              </div>
+                </div>
+              )}
+              
+              <div ref={messagesEndRef} />
+            </div>
 
-              {/* Input */}
+            {/* Input */}
               <div className="p-6 border-t border-gray-200">
                 <div className="flex space-x-3">
-                  <textarea
-                    value={inputMessage}
-                    onChange={(e) => setInputMessage(e.target.value)}
-                    onKeyPress={handleKeyPress}
+                <textarea
+                  value={inputMessage}
+                  onChange={(e) => setInputMessage(e.target.value)}
+                  onKeyPress={handleKeyPress}
                     placeholder={currentSession ? "Ask me anything about your studies..." : "Create a session first to start chatting..."}
                     className="flex-1 px-4 py-3 border border-gray-300 rounded-xl resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    rows="2"
+                  rows="2"
                     disabled={!currentSession || loading}
-                  />
-                  <button
+                />
+                <button
                     onClick={sendMessage}
                     disabled={loading || !inputMessage.trim() || !currentSession}
                     className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
                     <Send className="w-5 h-5" />
-                  </button>
+                </button>
                 </div>
                 {!currentSession && (
                   <p className="text-sm text-gray-500 mt-2 text-center">
                     Click "Start New Session" to begin chatting with the AI
                   </p>
                 )}
-              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Sidebar */}
+          <div className="space-y-6">
+          {/* Quick Starters */}
+            <div className="bg-white rounded-2xl shadow-lg p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                <Zap className="w-5 h-5 mr-2 text-yellow-500" />
+              Quick Starters
+            </h3>
+            <div className="space-y-2">
+              {conversationStarters.map((starter, index) => (
+                <button
+                  key={index}
+                  onClick={() => handleStarterClick(starter)}
+                  className="w-full text-left p-3 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
+                >
+                  {starter}
+                </button>
+              ))}
             </div>
           </div>
 
-          {/* Sidebar */}
-          <div className="space-y-6">
-            {/* Quick Starters */}
-            <div className="bg-white rounded-2xl shadow-lg p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                <Zap className="w-5 h-5 mr-2 text-yellow-500" />
-                Quick Starters
-              </h3>
-              <div className="space-y-2">
-                {conversationStarters.map((starter, index) => (
-                  <button
-                    key={index}
-                    onClick={() => handleStarterClick(starter)}
-                    className="w-full text-left p-3 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
-                  >
-                    {starter}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Study Tips */}
-            {showStudyTips && (
+          {/* Study Tips */}
+            {/* {showStudyTips && (
               <div className="bg-white rounded-2xl shadow-lg p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                   <Lightbulb className="w-5 h-5 mr-2 text-yellow-500" />
-                  Study Tips
-                </h3>
+              Study Tips
+            </h3>
                 <div className="space-y-3">
                   {studyTips.map((tip, index) => (
                     <div key={index} className="p-3 bg-yellow-50 rounded-lg">
@@ -597,7 +609,7 @@ const StudyChat = () => {
                   </button>
                 </div>
               </div>
-            )}
+            )} */}
 
             {/* Chat Sessions */}
             {showSessions && (
@@ -618,7 +630,7 @@ const StudyChat = () => {
                             <p className="text-xs text-gray-500 mt-1">
                               {session.difficulty} • {new Date(session.lastActivity).toLocaleDateString()}
                             </p>
-                          </div>
+              </div>
                           <div className="flex space-x-1">
                             <button
                               onClick={() => loadSession(session.sessionId)}
@@ -632,9 +644,9 @@ const StudyChat = () => {
                             >
                               <Trash2 className="w-3 h-3" />
                             </button>
-                          </div>
-                        </div>
-                      </div>
+              </div>
+            </div>
+          </div>
                     ))
                   )}
                   <button
@@ -648,23 +660,23 @@ const StudyChat = () => {
               </div>
             )}
 
-            {/* Chat Stats */}
+          {/* Chat Stats */}
             <div className="bg-white rounded-2xl shadow-lg p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Chat Stats</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Chat Stats</h3>
               <div className="space-y-3 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Messages</span>
-                  <span className="font-medium">{messages.length}</span>
-                </div>
-                <div className="flex justify-between">
+              <div className="flex justify-between">
+                <span className="text-gray-600">Messages</span>
+                <span className="font-medium">{messages.length}</span>
+              </div>
+              <div className="flex justify-between">
                   <span className="text-gray-600">Sessions</span>
                   <span className="font-medium">{sessions.length}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Status</span>
-                  <span className="font-medium">
+                <span className="font-medium">
                     {currentSession ? 'Active' : 'Not started'}
-                  </span>
+                </span>
                 </div>
               </div>
             </div>
@@ -675,4 +687,4 @@ const StudyChat = () => {
   );
 };
 
-export default StudyChat;
+export default StudyChat; 

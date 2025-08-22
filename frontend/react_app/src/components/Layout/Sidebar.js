@@ -11,7 +11,8 @@ import {
   Settings, 
   LogOut,
   X,
-  User
+  User,
+  Lightbulb
 } from 'lucide-react';
 
 const Sidebar = ({ isOpen, onClose, user }) => {
@@ -23,8 +24,9 @@ const Sidebar = ({ isOpen, onClose, user }) => {
     { path: '/simplify', icon: BookOpen, label: 'Content Simplifier' },
     { path: '/chat', icon: MessageSquare, label: 'Study Chat' },
     { path: '/quiz', icon: HelpCircle, label: 'Quiz Builder' },
+    { path: '/recommendations', icon: Lightbulb, label: 'Learning Recommendations' },
     // { path: '/progress', icon: HelpCircle, label: 'Progress Tracker' },
-    { path: '/learning-path', icon: Map, label: 'Learning Path' },
+    // { path: '/learning-path', icon: Map, label: 'Learning Path' },
     { path: '/profile', icon: Settings, label: 'Profile Settings' },
   ];
 

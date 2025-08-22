@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { HelpCircle, Play, CheckCircle, XCircle, Clock, Target, FileText, Sparkles } from 'lucide-react';
-import { useLocation } from 'react-router-dom';
+import { HelpCircle, Play, CheckCircle, XCircle, Clock, Target, FileText, Sparkles, Lightbulb } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { aiService, apiService, apiUtils } from '../../services/api';
 import LoadingSpinner from '../../components/Common/LoadingSpinner';
 
+
 const QuizBuilder = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const [content, setContent] = useState('');
   const [quiz, setQuiz] = useState(null);
   const [savedQuizId, setSavedQuizId] = useState(null);
@@ -20,6 +22,7 @@ const QuizBuilder = () => {
     difficulty: 'medium',
     questionTypes: ['multiple_choice']
   });
+
 
   // Check if content was passed from ContentSimplifier
   useEffect(() => {
@@ -42,13 +45,14 @@ const QuizBuilder = () => {
 
     setLoading(true);
     try {
-      // Generate quiz via AI service
+      // Generate quiz
       const response = await aiService.generateQuiz(content, {
         num_questions: quizSettings.numQuestions,
         difficulty: quizSettings.difficulty,
         question_types: quizSettings.questionTypes
       });
-      const quizData = response.data;
+
+      const quizData = response.data.quiz || response.data;
 
       // Persist quiz to Django so we can track attempts and progress
       const savePayload = {
@@ -85,7 +89,6 @@ const QuizBuilder = () => {
       setScore(0);
       setDetailedResults([]);
       
-      // The quiz is already saved by the generateQuiz endpoint
       apiUtils.handleSuccess('Quiz generated successfully!');
     } catch (error) {
       apiUtils.handleError(error, 'Failed to generate quiz. Please try again.');
@@ -474,10 +477,26 @@ const QuizBuilder = () => {
                   >
                     Retake Quiz
                   </button>
+                  <button
+                    onClick={() => {
+                      navigate('/recommendations', { 
+                        state: { 
+                          content: content,
+                          source: 'quiz'
+                        } 
+                      });
+                    }}
+                    className="btn-secondary flex items-center space-x-2"
+                  >
+                    <Lightbulb className="w-5 h-5" />
+                    <span>Get Learning Resources</span>
+                  </button>
                 </div>
               </div>
             </div>
           )}
+
+
         </div>
       )}
     </div>
