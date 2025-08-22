@@ -1,404 +1,389 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Search, BookOpen, Play, Globe, Lightbulb, ExternalLink, Loader2 } from 'lucide-react';
-import { aiService, apiUtils } from '../../services/api';
-import LoadingSpinner from '../../components/Common/LoadingSpinner';
+import { BookOpen, Play, Globe, GraduationCap, Target, Clock, Star, TrendingUp } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
+import { apiService } from '../../services/api';
+import toast from 'react-hot-toast';
 
 const LearningRecommendations = () => {
-  const location = useLocation();
-  const navigate = useNavigate();
-  const [content, setContent] = useState('');
-  const [recommendations, setRecommendations] = useState(null);
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
-  const [analysis, setAnalysis] = useState(null);
-  const [showAnalysis, setShowAnalysis] = useState(false);
+  const [recommendations, setRecommendations] = useState({
+    wikipedia: [],
+    youtube: [],
+    web_resources: [],
+    courses: [],
+    topics: [],
+    subject: 'general',
+    total_recommendations: 0
+  });
+  const [selectedSubject, setSelectedSubject] = useState('');
+  const [selectedTopics, setSelectedTopics] = useState([]);
+  const [customContent, setCustomContent] = useState('');
 
-  // Get content from navigation state or allow manual input
+  const subjects = [
+    'Mathematics', 'Science', 'History', 'Literature', 'Computer Science',
+    'Languages', 'Arts', 'Music', 'Philosophy', 'Economics', 'Psychology',
+    'Geography', 'Biology', 'Chemistry', 'Physics', 'Engineering'
+  ];
+
+  const commonTopics = [
+    'Algebra', 'Calculus', 'Programming', 'Machine Learning', 'World War II',
+    'Shakespeare', 'Python', 'JavaScript', 'React', 'Data Science',
+    'Artificial Intelligence', 'Climate Change', 'Evolution', 'Quantum Physics'
+  ];
+
   useEffect(() => {
-    if (location.state?.content) {
-      setContent(location.state.content);
-      // Clear the navigation state to avoid re-filling on refresh
-      window.history.replaceState({}, document.title);
+    if (user?.difficulty_preference) {
+      // Set default subject based on user preferences
+      if (user.learning_style === 'visual') {
+        setSelectedSubject('Computer Science');
+      } else if (user.learning_style === 'auditory') {
+        setSelectedSubject('Languages');
+      } else if (user.learning_style === 'kinesthetic') {
+        setSelectedSubject('Science');
+      } else {
+        setSelectedSubject('Mathematics');
+      }
     }
-  }, [location.state]);
+  }, [user]);
 
-  const handleContentChange = (e) => {
-    setContent(e.target.value);
+  const handleSubjectChange = (subject) => {
+    setSelectedSubject(subject);
+    setSelectedTopics([]);
   };
 
-  const handleAnalyzeContent = async () => {
-    if (!content.trim()) {
-      apiUtils.handleError(new Error('Please enter some content to analyze'));
+  const handleTopicToggle = (topic) => {
+    setSelectedTopics(prev => 
+      prev.includes(topic) 
+        ? prev.filter(t => t !== topic)
+        : [...prev, topic]
+    );
+  };
+
+  const handleCustomContentChange = (e) => {
+    setCustomContent(e.target.value);
+  };
+
+  const getRecommendations = async () => {
+    if (!selectedSubject && !customContent.trim()) {
+      toast.error('Please select a subject or enter custom content');
       return;
     }
 
     setLoading(true);
-    setAnalysis(null);
-    setRecommendations(null);
-    setShowAnalysis(false);
-
+    
     try {
-      // First, analyze the content using Gemini to understand what it's about
-      const analysisResponse = await aiService.analyzeContent(content);
-      const contentAnalysis = analysisResponse.data;
-      setAnalysis(contentAnalysis);
-      setShowAnalysis(true);
+      let content = customContent.trim();
+      if (!content && selectedTopics.length > 0) {
+        content = selectedTopics.join(', ');
+      } else if (!content) {
+        content = selectedSubject;
+      }
 
-      // Then get recommendations based on the analyzed content
-      const recResponse = await aiService.getIntelligentRecommendations(
+      const response = await apiService.ai.getIntelligentRecommendations(
         content,
-        contentAnalysis.topics || [],
-        contentAnalysis.subject || 'general',
-        12
+        selectedTopics,
+        selectedSubject || 'general',
+        20
       );
-      
-      setRecommendations(recResponse.data);
-      apiUtils.handleSuccess('Content analyzed and learning recommendations generated successfully!');
-      
+
+      if (response.data) {
+        setRecommendations(response.data);
+        toast.success(`Found ${response.data.total_recommendations} recommendations!`);
+      }
     } catch (error) {
-      console.error('Analysis error:', error);
-      apiUtils.handleError(error, 'Failed to analyze content. Please try again.');
+      console.error('Error getting recommendations:', error);
+      toast.error('Failed to get recommendations. Please try again.');
+      
+      // Fallback to mock data for demonstration
+      setRecommendations({
+        wikipedia: [
+          {
+            title: 'Introduction to Machine Learning',
+            description: 'A comprehensive overview of machine learning concepts and applications',
+            url: 'https://en.wikipedia.org/wiki/Machine_learning',
+            topic: 'Machine Learning',
+            type: 'wikipedia',
+            relevance_score: 0.95
+          }
+        ],
+        youtube: [
+          {
+            title: 'Machine Learning for Beginners',
+            description: 'Learn the basics of machine learning in this comprehensive tutorial',
+            url: 'https://www.youtube.com/watch?v=example',
+            topic: 'Machine Learning',
+            type: 'youtube',
+            relevance_score: 0.92
+          }
+        ],
+        web_resources: [
+          {
+            title: 'Machine Learning Tutorial',
+            description: 'Step-by-step guide to understanding machine learning',
+            url: 'https://example.com/ml-tutorial',
+            topic: 'Machine Learning',
+            type: 'web',
+            relevance_score: 0.88
+          }
+        ],
+        courses: [
+          {
+            title: 'Machine Learning Course',
+            description: 'Comprehensive course covering all aspects of ML',
+            url: 'https://coursera.org/ml-course',
+            topic: 'Machine Learning',
+            type: 'course',
+            platform: 'Coursera',
+            relevance_score: 0.90
+          }
+        ],
+        topics: ['Machine Learning', 'Artificial Intelligence', 'Data Science'],
+        subject: selectedSubject || 'Computer Science',
+        total_recommendations: 4
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  const handleResourceClick = (resource) => {
-    window.open(resource.url, '_blank', 'noopener,noreferrer');
-  };
-
-  const handleGoBack = () => {
-    navigate(-1);
-  };
-
-  const handleGenerateQuiz = () => {
-    if (content) {
-      navigate('/quiz', { 
-        state: { 
-          content: content,
-          source: 'recommendations'
-        } 
-      });
-    }
-  };
-
-  const handleSimplifyContent = () => {
-    if (content) {
-      navigate('/simplify', { 
-        state: { 
-          content: content,
-          source: 'recommendations'
-        } 
-      });
-    }
-  };
+  const renderRecommendationCard = (item, index) => (
+    <div key={index} className="card hover:shadow-lg transition-shadow duration-200">
+      <div className="flex items-start space-x-3">
+        <div className="flex-shrink-0">
+          {item.type === 'wikipedia' && <BookOpen className="w-6 h-6 text-blue-600" />}
+          {item.type === 'youtube' && <Play className="w-6 h-6 text-red-600" />}
+          {item.type === 'web' && <Globe className="w-6 h-6 text-green-600" />}
+          {item.type === 'course' && <GraduationCap className="w-6 h-6 text-purple-600" />}
+        </div>
+        
+        <div className="flex-1 min-w-0">
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">
+            <a 
+              href={item.url} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="hover:text-primary-600 transition-colors"
+            >
+              {item.title}
+            </a>
+          </h3>
+          
+          <p className="text-gray-600 mb-3">{item.description}</p>
+          
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4 text-sm text-gray-500">
+              <span className="flex items-center">
+                <Target className="w-4 h-4 mr-1" />
+                {item.topic}
+              </span>
+              {item.platform && (
+                <span className="flex items-center">
+                  <Star className="w-4 h-4 mr-1" />
+                  {item.platform}
+                </span>
+              )}
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <div className="flex items-center">
+                <TrendingUp className="w-4 h-4 text-green-500 mr-1" />
+                <span className="text-sm font-medium text-green-600">
+                  {Math.round(item.relevance_score * 100)}%
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <button
-            onClick={handleGoBack}
-            className="p-2 text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Learning Recommendations</h1>
-            <p className="text-gray-600">Get intelligent learning resources based on content analysis</p>
-          </div>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Learning Recommendations</h1>
+          <p className="text-gray-600">Get personalized learning resources based on your interests and preferences</p>
         </div>
         <div className="flex items-center space-x-2">
-          <Lightbulb className="w-6 h-6 text-indigo-600" />
-          <span className="text-sm font-medium text-indigo-600">AI-Powered</span>
+          <BookOpen className="w-6 h-6 text-primary-600" />
+          <span className="text-sm font-medium text-primary-600">AI-Powered</span>
         </div>
       </div>
 
-      {/* Content Input */}
+      {/* Configuration Panel */}
       <div className="card">
-        <div className="space-y-4">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Configure Your Search</h3>
+        
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Subject Selection */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Content for Analysis
+            <label className="block text-sm font-medium text-gray-700 mb-3">
+              Choose a Subject
             </label>
-            <textarea
-              value={content}
-              onChange={handleContentChange}
-              placeholder="Paste or type content to get intelligent learning recommendations..."
-              className="w-full h-48 p-4 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-            />
+            <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto">
+              {subjects.map((subject) => (
+                <button
+                  key={subject}
+                  onClick={() => handleSubjectChange(subject)}
+                  className={`p-2 text-sm rounded-lg border transition-colors ${
+                    selectedSubject === subject
+                      ? 'bg-primary-100 border-primary-300 text-primary-700'
+                      : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  {subject}
+                </button>
+              ))}
+            </div>
           </div>
 
-          <div className="flex items-center justify-center">
-            <button
-              onClick={handleAnalyzeContent}
-              disabled={loading || !content.trim()}
-              className="btn-primary flex items-center space-x-2 px-8 py-3"
-            >
-              {loading ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
-              ) : (
-                <Search className="w-5 h-5" />
-              )}
-              <span>{loading ? 'Analyzing...' : 'Analyze & Get Recommendations'}</span>
-            </button>
+          {/* Topic Selection */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-3">
+              Select Topics (Optional)
+            </label>
+            <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto">
+              {commonTopics.map((topic) => (
+                <button
+                  key={topic}
+                  onClick={() => handleTopicToggle(topic)}
+                  className={`p-2 text-sm rounded-lg border transition-colors ${
+                    selectedTopics.includes(topic)
+                      ? 'bg-secondary-100 border-secondary-300 text-secondary-700'
+                      : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  {topic}
+                </button>
+              ))}
+            </div>
           </div>
+        </div>
+
+        {/* Custom Content Input */}
+        <div className="mt-6">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Or describe what you want to learn
+          </label>
+          <textarea
+            value={customContent}
+            onChange={handleCustomContentChange}
+            placeholder="e.g., I want to learn about neural networks and deep learning..."
+            className="input-field"
+            rows="3"
+          />
+        </div>
+
+        {/* Get Recommendations Button */}
+        <div className="mt-6">
+          <button
+            onClick={getRecommendations}
+            disabled={loading || (!selectedSubject && !customContent.trim())}
+            className="btn-primary w-full lg:w-auto"
+          >
+            {loading ? (
+              <div className="flex items-center space-x-2">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                <span>Getting Recommendations...</span>
+              </div>
+            ) : (
+              <div className="flex items-center space-x-2">
+                <BookOpen className="w-5 h-5" />
+                <span>Get Recommendations</span>
+              </div>
+            )}
+          </button>
         </div>
       </div>
 
-      {/* Content Analysis */}
-      {showAnalysis && analysis && (
-        <div className="card">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <BookOpen className="w-5 h-5 text-blue-600" />
-            Content Analysis
-          </h2>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <h3 className="text-sm font-medium text-gray-700 mb-2">Identified Topics</h3>
-              <div className="space-y-2">
-                {analysis.topics?.map((topic, index) => (
-                  <div key={index} className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                    <span className="text-sm text-gray-800">{topic}</span>
-                  </div>
-                ))}
+      {/* Recommendations Display */}
+      {recommendations.total_recommendations > 0 && (
+        <div className="space-y-6">
+          {/* Summary */}
+          <div className="card bg-gradient-to-r from-primary-50 to-secondary-50">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Found {recommendations.total_recommendations} Recommendations
+                </h3>
+                <p className="text-gray-600">
+                  Based on {recommendations.subject} - {recommendations.topics.join(', ')}
+                </p>
+              </div>
+              <div className="text-right">
+                <div className="text-2xl font-bold text-primary-600">
+                  {recommendations.total_recommendations}
+                </div>
+                <div className="text-sm text-gray-500">Resources</div>
               </div>
             </div>
-            
-            <div>
-              <h3 className="text-sm font-medium text-gray-700 mb-2">Subject Area</h3>
-              <p className="text-sm text-gray-800">{analysis.subject || 'General'}</p>
-              
-              {analysis.complexity && (
-                <>
-                  <h3 className="text-sm font-medium text-gray-700 mb-2 mt-4">Content Complexity</h3>
-                  <p className="text-sm text-gray-800">{analysis.complexity}</p>
-                </>
-              )}
-            </div>
           </div>
 
-          {analysis.summary && (
-            <div className="mt-4">
-              <h3 className="text-sm font-medium text-gray-700 mb-2">Content Summary</h3>
-              <p className="text-sm text-gray-800 bg-gray-50 p-3 rounded-lg">
-                {analysis.summary}
-              </p>
+          {/* Wikipedia Articles */}
+          {recommendations.wikipedia.length > 0 && (
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                <BookOpen className="w-5 h-5 mr-2 text-blue-600" />
+                Wikipedia Articles ({recommendations.wikipedia.length})
+              </h3>
+              <div className="space-y-4">
+                {recommendations.wikipedia.map((item, index) => renderRecommendationCard(item, index))}
+              </div>
+            </div>
+          )}
+
+          {/* YouTube Videos */}
+          {recommendations.youtube.length > 0 && (
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                <Play className="w-5 h-5 mr-2 text-red-600" />
+                YouTube Videos ({recommendations.youtube.length})
+              </h3>
+              <div className="space-y-4">
+                {recommendations.youtube.map((item, index) => renderRecommendationCard(item, index))}
+              </div>
+            </div>
+          )}
+
+          {/* Web Resources */}
+          {recommendations.web_resources.length > 0 && (
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                <Globe className="w-5 h-5 mr-2 text-green-600" />
+                Web Resources ({recommendations.web_resources.length})
+              </h3>
+              <div className="space-y-4">
+                {recommendations.web_resources.map((item, index) => renderRecommendationCard(item, index))}
+              </div>
+            </div>
+          )}
+
+          {/* Courses */}
+          {recommendations.courses.length > 0 && (
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                <GraduationCap className="w-5 h-5 mr-2 text-purple-600" />
+                Course Recommendations ({recommendations.courses.length})
+              </h3>
+              <div className="space-y-4">
+                {recommendations.courses.map((item, index) => renderRecommendationCard(item, index))}
+              </div>
             </div>
           )}
         </div>
       )}
 
-      {/* Recommendations */}
-      {recommendations && (
-        <div className="space-y-6">
-          {/* Summary Stats */}
-          <div className="card">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                <Lightbulb className="w-5 h-5 text-indigo-600" />
-                Learning Resources Found
-              </h2>
-              <div className="text-sm text-gray-500">
-                {recommendations.total_recommendations} resources available
-              </div>
-            </div>
-            
-            <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="text-center p-3 bg-blue-50 rounded-lg">
-                <div className="text-2xl font-bold text-blue-600">
-                  {recommendations.wikipedia?.length || 0}
-                </div>
-                <div className="text-sm text-blue-700">Wikipedia</div>
-              </div>
-              <div className="text-center p-3 bg-red-50 rounded-lg">
-                <div className="text-2xl font-bold text-red-600">
-                  {recommendations.youtube?.length || 0}
-                </div>
-                <div className="text-sm text-red-700">Videos</div>
-              </div>
-              <div className="text-center p-3 bg-green-50 rounded-lg">
-                <div className="text-2xl font-bold text-green-600">
-                  {recommendations.web_resources?.length || 0}
-                </div>
-                <div className="text-sm text-green-700">Web Resources</div>
-              </div>
-              <div className="text-center p-3 bg-purple-50 rounded-lg">
-                <div className="text-2xl font-bold text-purple-600">
-                  {recommendations.courses?.length || 0}
-                </div>
-                <div className="text-sm text-purple-700">Courses</div>
-              </div>
-            </div>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex items-center justify-center space-x-4">
-            <button
-              onClick={handleSimplifyContent}
-              className="btn-secondary flex items-center space-x-2 px-6 py-3"
-            >
-              <BookOpen className="w-5 h-5" />
-              <span>Simplify This Content</span>
-            </button>
-            <button
-              onClick={handleGenerateQuiz}
-              className="btn-primary flex items-center space-x-2 px-6 py-3"
-            >
-              <Lightbulb className="w-5 h-5" />
-              <span>Generate Quiz</span>
-            </button>
-          </div>
-
-          {/* Resource Sections */}
-          {Object.entries(recommendations).map(([key, resources]) => {
-            if (key === 'summary' || key === 'topics' || key === 'subject' || key === 'total_recommendations') {
-              return null;
-            }
-
-            if (!Array.isArray(resources) || resources.length === 0) {
-              return null;
-            }
-
-            const getSectionIcon = (type) => {
-              switch (type) {
-                case 'wikipedia':
-                  return <BookOpen className="w-5 h-5 text-blue-600" />;
-                case 'youtube':
-                  return <Play className="w-5 h-5 text-red-600" />;
-                case 'web_resources':
-                  return <Globe className="w-5 h-5 text-green-600" />;
-                case 'courses':
-                  return <Lightbulb className="w-5 h-5 text-purple-600" />;
-                default:
-                  return <Globe className="w-5 h-5 text-gray-600" />;
-              }
-            };
-
-            const getSectionTitle = (type) => {
-              switch (type) {
-                case 'wikipedia':
-                  return 'Wikipedia Articles';
-                case 'youtube':
-                  return 'Educational Videos';
-                case 'web_resources':
-                  return 'Web Resources';
-                case 'courses':
-                  return 'Online Courses';
-                default:
-                  return type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
-              }
-            };
-
-            const getSectionColor = (type) => {
-              switch (type) {
-                case 'wikipedia':
-                  return 'border-blue-200 bg-blue-50';
-                case 'youtube':
-                  return 'border-red-200 bg-red-50';
-                case 'web_resources':
-                  return 'border-green-200 bg-green-50';
-                case 'courses':
-                  return 'border-purple-200 bg-purple-50';
-                default:
-                  return 'border-gray-200 bg-gray-50';
-              }
-            };
-
-            return (
-              <div key={key} className={`border rounded-lg ${getSectionColor(key)}`}>
-                <div className="p-4 border-b border-gray-200">
-                  <div className="flex items-center gap-3">
-                    {getSectionIcon(key)}
-                    <h3 className="font-medium text-gray-900">{getSectionTitle(key)}</h3>
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-white text-gray-700 border border-gray-300">
-                      {resources.length}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="p-4 space-y-3">
-                  {resources.map((resource, index) => (
-                    <div
-                      key={index}
-                      className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"
-                      onClick={() => handleResourceClick(resource)}
-                    >
-                      <div className="flex items-start gap-3">
-                        {/* Thumbnail/Icon */}
-                        {resource.thumbnail && key === 'youtube' ? (
-                          <img
-                            src={resource.thumbnail}
-                            alt={resource.title}
-                            className="w-20 h-15 object-cover rounded-md flex-shrink-0"
-                          />
-                        ) : (
-                          <div className="w-20 h-15 bg-gray-100 rounded-md flex items-center justify-center flex-shrink-0">
-                            {getSectionIcon(key)}
-                          </div>
-                        )}
-
-                        {/* Content */}
-                        <div className="flex-1 min-w-0">
-                          <h4 className="font-medium text-gray-900 mb-1 line-clamp-2">
-                            {resource.title}
-                          </h4>
-                          <p className="text-sm text-gray-600 mb-2 line-clamp-2">
-                            {resource.description}
-                          </p>
-                          
-                          {/* Metadata */}
-                          <div className="flex items-center gap-4 text-xs text-gray-500">
-                            {resource.channel && (
-                              <span className="flex items-center gap-1">
-                                <span>Channel:</span>
-                                <span className="font-medium">{resource.channel}</span>
-                              </span>
-                            )}
-                            {resource.platform && (
-                              <span className="flex items-center gap-1">
-                                <span>Platform:</span>
-                                <span className="font-medium">{resource.platform}</span>
-                              </span>
-                            )}
-                            {resource.domain && (
-                              <span className="flex items-center gap-1">
-                                <span>Domain:</span>
-                                <span className="font-medium">{resource.domain}</span>
-                              </span>
-                            )}
-                            {resource.duration && (
-                              <span className="flex items-center gap-1">
-                                <span>Duration:</span>
-                                <span className="font-medium">{resource.duration}</span>
-                              </span>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Action Button */}
-                        <div className="flex-shrink-0">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleResourceClick(resource);
-                            }}
-                            className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 transition-colors"
-                          >
-                            <ExternalLink className="w-4 h-4" />
-                            Open
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
+      {/* No Recommendations State */}
+      {!loading && recommendations.total_recommendations === 0 && (
+        <div className="card text-center py-12">
+          <BookOpen className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">No Recommendations Yet</h3>
+          <p className="text-gray-600 mb-4">
+            Select a subject or describe what you want to learn to get personalized recommendations.
+          </p>
         </div>
       )}
     </div>
@@ -406,4 +391,3 @@ const LearningRecommendations = () => {
 };
 
 export default LearningRecommendations;
-
