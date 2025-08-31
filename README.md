@@ -188,25 +188,11 @@ docker-compose -f docker-compose.prod.yml up -d
 
 This project is licensed under the MIT License.
 
-## 🆘 Support
-
-For support and questions:
-- Create an issue on GitHub
-- Check the documentation in `/docs`
-- Review the API documentation
 
 ## 🔄 Updates
 
 ### Recent Updates
 - Added AI-powered content simplification
 - Implemented real-time study chat
-- Enhanced progress tracking with charts
-- Added gamification system
 - Improved responsive design
 
-### Roadmap
-- [ ] Advanced AI model integration
-- [ ] Video content processing
-- [ ] Collaborative learning features
-- [ ] Mobile app development
-- [ ] Advanced analytics dashboard 
